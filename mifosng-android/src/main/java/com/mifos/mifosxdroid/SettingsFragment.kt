@@ -12,6 +12,7 @@ import android.widget.Toast
 import com.mifos.mifosxdroid.dialogfragments.syncsurveysdialog.SyncSurveysDialogFragment
 import com.mifos.utils.FragmentConstants
 import com.mifos.utils.LanguageHelper
+import com.mifos.utils.ThemeHelper
 
 /**
  * Created by mayankjindal on 22/07/17.
@@ -34,6 +35,13 @@ class SettingsFragment : PreferenceFragment(), OnSharedPreferenceChangeListener 
                 syncSurveysDialogFragment.show(fragmentTransaction,
                         resources.getString(R.string.sync_clients))
             }
+            true
+        }
+        val themePreference = findPreference("dark_mode") as ListPreference
+        themePreference.onPreferenceChangeListener = OnPreferenceChangeListener { preference, newValue ->
+            val themeOption = newValue as String
+            ThemeHelper.applyTheme(themeOption)
+            startActivity(Intent(activity, activity.javaClass))
             true
         }
     }
