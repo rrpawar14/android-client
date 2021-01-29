@@ -87,6 +87,31 @@ public class DataManagerClient {
         }
     }
 
+    public Observable<Page<Client>> getAllClientsByOfficeId(boolean paged, int offset, int officeId) {
+        switch (PrefManager.getUserStatus()) {
+            case 0:
+                return mBaseApiManager.getClientsApi().getAllClientsByOfficeId(paged, offset, officeId,0)
+                        .concatMap(new Func1<Page<Client>, Observable<? extends Page<Client>>>() {
+                            @Override
+                            public Observable<? extends Page<Client>> call(Page<Client>
+                                                                                   clientPage) {
+                                return Observable.just(clientPage);
+                            }
+                        });
+            case 1:
+                /**
+                 * Return All Clients List from DatabaseHelperClient only one time.
+                 * If offset is zero this means this is first request and
+                 * return all clients from DatabaseHelperClient
+                 */
+                if (offset == 0)
+                    return mDatabaseHelperClient.readAllClients();
+
+            default:
+                return Observable.just(new Page<Client>());
+        }
+    }
+
 
     /**
      * This Method Request to the DatabaseHelperClient and DatabaseHelperClient Read the All

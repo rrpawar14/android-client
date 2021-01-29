@@ -28,7 +28,7 @@ public class GroupsListPresenter extends BasePresenter<GroupsListMvpView> {
     private List<Group> mDbGroupList;
     private List<Group> mSyncGroupList;
 
-    private int limit = 100;
+    private int limit;
     private Boolean loadmore = false;
     private Boolean mRestApiGroupSyncStatus = false;
     private Boolean mDatabaseGroupSyncStatus = false;

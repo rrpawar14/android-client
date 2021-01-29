@@ -9,6 +9,8 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Parcelable;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.widget.SearchView;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.appcompat.view.ActionMode;
@@ -16,10 +18,17 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Filter;
+import android.widget.Filterable;
 import android.widget.ProgressBar;
+import android.widget.Spinner;
+import android.widget.Toast;
 
 import com.github.therajanmaurya.sweeterror.SweetUIErrorHandler;
 import com.mifos.mifosxdroid.R;
@@ -33,12 +42,20 @@ import com.mifos.mifosxdroid.core.util.Toaster;
 import com.mifos.mifosxdroid.dialogfragments.syncclientsdialog.SyncClientsDialogFragment;
 import com.mifos.mifosxdroid.online.ClientActivity;
 import com.mifos.mifosxdroid.online.createnewclient.CreateNewClientFragment;
+import com.mifos.mifosxdroid.online.createnewclient.CreateNewClientPresenter;
+import com.mifos.mifosxdroid.online.generatecollectionsheet.GenerateCollectionSheetPresenter;
 import com.mifos.objects.client.Client;
+import com.mifos.objects.organisation.Office;
+import com.mifos.objects.templates.clients.OfficeOptions;
 import com.mifos.utils.Constants;
 import com.mifos.utils.FragmentConstants;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.function.ToIntFunction;
 
 import javax.inject.Inject;
 
@@ -70,7 +87,7 @@ import static android.view.View.VISIBLE;
  * and unregister the ScrollListener and SwipeLayout.
  */
 public class ClientListFragment extends MifosBaseFragment
-        implements OnItemClickListener, ClientListMvpView, SwipeRefreshLayout.OnRefreshListener {
+        implements OnItemClickListener, ClientListMvpView, Spinner.OnItemSelectedListener, SwipeRefreshLayout.OnRefreshListener, Filterable {
 
     public static final String LOG_TAG = ClientListFragment.class.getSimpleName();
 
@@ -86,11 +103,18 @@ public class ClientListFragment extends MifosBaseFragment
     @BindView(R.id.pb_client)
     ProgressBar pb_client;
 
+    @BindView(R.id.sp_search)
+    Spinner sp_search;
+
     @Inject
     ClientNameListAdapter mClientNameListAdapter;
 
     @Inject
     ClientListPresenter mClientListPresenter;
+
+    @Inject
+    CreateNewClientPresenter createNewClientPresenter;
+
 
     private View rootView;
     private List<Client> clientList;
@@ -101,6 +125,10 @@ public class ClientListFragment extends MifosBaseFragment
     private LinearLayoutManager mLayoutManager;
     private Integer clickedPosition = -1;
     private SweetUIErrorHandler sweetUIErrorHandler;
+    private List<Client> clientsListFilter;
+    private List<Client> clientsFullList;
+    private List<String> officeList;
+    private Boolean isSearchFilter = false;
 
     @Override
     public void onItemClick(View childView, int position) {
@@ -164,7 +192,9 @@ public class ClientListFragment extends MifosBaseFragment
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         clientList = new ArrayList<>();
-        selectedClients = new ArrayList<>();
+        officeList = new ArrayList<>();
+        this.selectedClients = new ArrayList<>();
+        this.clientsListFilter = new ArrayList<>();
         actionModeCallback = new ActionModeCallback();
         if (getArguments() != null) {
             clientList = getArguments().getParcelableArrayList(Constants.CLIENTS);
@@ -175,12 +205,22 @@ public class ClientListFragment extends MifosBaseFragment
     }
 
     @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+
+        int id = item.getItemId();
+        if(id == R.id.mItem_search){
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle
             savedInstanceState) {
         rootView = inflater.inflate(R.layout.fragment_client, container, false);
         ((MifosBaseActivity) getActivity()).getActivityComponent().inject(this);
         setToolbarTitle(getResources().getString(R.string.clients));
-
         ButterKnife.bind(this, rootView);
         mClientListPresenter.attachView(this);
 
@@ -194,7 +234,9 @@ public class ClientListFragment extends MifosBaseFragment
         rv_clients.addOnScrollListener(new EndlessRecyclerViewScrollListener(mLayoutManager) {
             @Override
             public void onLoadMore(int page, int totalItemCount) {
-                mClientListPresenter.loadClients(true, totalItemCount);
+                if(totalItemCount>8) {
+                    mClientListPresenter.loadClients(true, totalItemCount);
+                }
             }
         });
 
@@ -232,6 +274,14 @@ public class ClientListFragment extends MifosBaseFragment
         mClientNameListAdapter.setContext(getActivity());
         rv_clients.setLayoutManager(mLayoutManager);
         rv_clients.addOnItemTouchListener(new RecyclerItemClickListener(getActivity(), this));
+        rv_clients.addOnScrollListener(new EndlessRecyclerViewScrollListener(mLayoutManager) {
+            @Override
+            public void onLoadMore(int page, int totalItemCount) {
+                if(totalItemCount>8) {
+                    mClientListPresenter.loadClients(true, totalItemCount);
+                }
+            }
+        });
         rv_clients.setHasFixedSize(true);
         rv_clients.setAdapter(mClientNameListAdapter);
         swipeRefreshLayout.setColorSchemeColors(getActivity()
@@ -292,11 +342,32 @@ public class ClientListFragment extends MifosBaseFragment
     /**
      * Setting ClientList to the Adapter and updating the Adapter.
      */
+
     @Override
     public void showClientList(List<Client> clients) {
-        clientList = clients;
-        mClientNameListAdapter.setClients(clients);
-        mClientNameListAdapter.notifyDataSetChanged();
+
+        if(isSearchFilter){
+            clientList = clients;
+            mClientNameListAdapter.setClients(clients);
+            this.clientsFullList = new ArrayList<>(clients);
+            // mClientNameListAdapter.notifyDataSetChanged();
+        }
+        else{
+            clientList = clients;
+            mClientNameListAdapter.setClients(clients);
+            this.clientsFullList = new ArrayList<>(clients);
+            mClientNameListAdapter.notifyDataSetChanged();
+        }
+
+    }
+
+    @Override
+    public void showClientListLoadMore(List<Client> clients) {
+
+            clientList = clients;
+            mClientNameListAdapter.setClients(clients);
+            this.clientsFullList = new ArrayList<>(clients);
+            mClientNameListAdapter.notifyDataSetChanged();
     }
 
     /**
@@ -304,11 +375,45 @@ public class ClientListFragment extends MifosBaseFragment
      *
      * @param clients List<Client></>
      */
+
     @Override
     public void showLoadMoreClients(List<Client> clients) {
         clientList.addAll(clients);
-        mClientNameListAdapter.notifyDataSetChanged();
+       // mClientNameListAdapter.notifyDataSetChanged();
     }
+
+    /**
+     * Initialize the contents of the Fragment host's standard options menu.  You
+     * should place your menu items in to <var>menu</var>.  For this method
+     * to be called, you must have first called {@link #setHasOptionsMenu}.  See
+     * for more information.
+     *
+     * @param menu     The options menu in which you place your items.
+     * @param inflater
+     * @see #setHasOptionsMenu
+     * @see #onPrepareOptionsMenu
+     * @see #onOptionsItemSelected
+     */
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        MenuItem Item = menu.findItem(R.id.mItem_menu_search);
+        Item.setVisible(true);
+        SearchView searchView = (SearchView) Item.getActionView();
+
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                return false;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                 getFilter().filter(newText);
+                return false;
+            };
+        });
+        super.onCreateOptionsMenu(menu, inflater);
+    };
 
     /**
      * Showing Fetched ClientList size is 0 and show there is no client to show.
@@ -331,7 +436,52 @@ public class ClientListFragment extends MifosBaseFragment
         sweetUIErrorHandler.showSweetErrorUI(errorMessage, R.drawable.ic_error_black_24dp,
                 rv_clients, errorView);
     }
+    private HashMap<String, Integer> officeNameIdHashMap = new HashMap<String, Integer>();
+    private List<String> officeNames = new ArrayList<String>();
 
+    @Override
+    public void showOffices(List<OfficeOptions> offices) {
+        officeList.clear();
+        officeNameIdHashMap = mClientListPresenter.createOfficeNameIdMap(offices, officeNames);
+        setSpinner(sp_search, officeNames);
+        sp_search.setOnItemSelectedListener(this);
+    }
+
+    private void setSpinner(Spinner spinner, List<String> values) {
+        ArrayAdapter<String> adapter = new ArrayAdapter<String>(getActivity(),
+                android.R.layout.simple_spinner_item, values);
+        adapter.notifyDataSetChanged();
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+    }
+
+
+    @Override
+    public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+        int officeId = officeNameIdHashMap.get(officeNames.get(i));
+        if (officeId != -1) {
+            mClientListPresenter.loadClientsByOfficeId(false, 0, officeId);
+          //  mClientNameListAdapter.notifyDataSetChanged();
+        } else {
+            Toaster.show(rootView, getString(R.string.error_select_office));
+        }
+    }
+
+    @Override
+    public void onNothingSelected(AdapterView<?> adapterView) {
+
+    }
+
+    public void getSelectedOffice(View v){
+
+        OfficeOptions officeOptions = (OfficeOptions) sp_search.getSelectedItem();
+        fetchOfficeData(officeOptions);
+    }
+
+    private int fetchOfficeData(OfficeOptions officeOptions){
+        int id = officeOptions.getId();
+        return id;
+    }
 
     /**
      * show MifosBaseActivity ProgressBar, if mClientNameListAdapter.getItemCount() == 0
@@ -376,6 +526,44 @@ public class ClientListFragment extends MifosBaseFragment
             actionMode.invalidate();
         }
     }
+
+    @Override
+    public Filter getFilter() {
+        return filter;
+    }
+
+    final Filter filter = new Filter() {
+
+        @Override
+        protected FilterResults performFiltering(CharSequence charSequence) {
+            List<Client> filteredList = new ArrayList<>();
+            if (charSequence.toString().isEmpty()) {
+                filteredList.addAll(clientsFullList);
+            } else {
+                String filterPattern = charSequence.toString().toLowerCase().trim();
+
+                for(Client client: clientsFullList){
+                    if(client.getDisplayName().toLowerCase().contains(filterPattern)){
+                        filteredList.add(client);
+                    }
+                    if(client.getAccountNo().contains(filterPattern)){
+                        filteredList.add(client);
+                    }
+                }
+            }
+            FilterResults filterResults = new FilterResults();
+            filterResults.values = filteredList;
+            return filterResults;
+        }
+
+        @Override
+        protected void publishResults(CharSequence charSequence, FilterResults filterResults) {
+            isSearchFilter = true;
+            clientList.clear();
+            clientList.addAll((List) filterResults.values);
+            mClientNameListAdapter.notifyDataSetChanged();
+        }
+    };
 
     /**
      * This ActionModeCallBack Class handling the User Event after the Selection of Clients. Like
@@ -429,4 +617,3 @@ public class ClientListFragment extends MifosBaseFragment
         }
     }
 }
-

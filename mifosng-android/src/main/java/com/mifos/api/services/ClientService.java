@@ -50,6 +50,12 @@ public interface ClientService {
                                            @Query("offset") int offset,
                                            @Query("limit") int limit);
 
+    @GET(APIEndPoint.CLIENTS)
+    Observable<Page<Client>> getAllClientsByOfficeId(@Query("paged") boolean b,
+                                           @Query("offset") int offset,
+                                           @Query("officeId") int officeId,
+                                           @Query("limit") int limit);
+
     @GET(APIEndPoint.CLIENTS + "/{clientId}")
     Observable<Client> getClient(@Path("clientId") int clientId);
 

@@ -3,6 +3,7 @@ package com.mifos.api.datamanager;
 import com.mifos.api.BaseApiManager;
 import com.mifos.api.local.databasehelper.DatabaseHelperOffices;
 import com.mifos.objects.organisation.Office;
+import com.mifos.objects.templates.clients.OfficeOptions;
 import com.mifos.utils.PrefManager;
 
 import java.util.ArrayList;
@@ -54,6 +55,29 @@ public class DataManagerOffices {
 
             default:
                 List<Office> offices = new ArrayList<>();
+                return Observable.just(offices);
+        }
+    }
+
+    //will fetch only id and name
+    public Observable<List<OfficeOptions>> getOfficesFields() {
+        switch (PrefManager.getUserStatus()) {
+            case 0:
+                return mBaseApiManager.getOfficeApi().getOfficeIdName()
+                        .concatMap(new Func1<List<OfficeOptions>, Observable<? extends List<OfficeOptions>>>() {
+                            @Override
+                            public Observable<? extends List<OfficeOptions>> call(List<OfficeOptions> offices) {
+                                return Observable.just(offices);
+                            }
+                        });
+            case 1:
+                /**
+                 * return all List of Offices from DatabaseHelperOffices
+                 */
+
+
+            default:
+                List<OfficeOptions> offices = new ArrayList<>();
                 return Observable.just(offices);
         }
     }
