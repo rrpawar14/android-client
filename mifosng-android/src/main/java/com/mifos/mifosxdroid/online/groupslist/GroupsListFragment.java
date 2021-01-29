@@ -7,6 +7,8 @@ package com.mifos.mifosxdroid.online.groupslist;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Parcelable;
+
+import androidx.appcompat.widget.SearchView;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.appcompat.view.ActionMode;
@@ -14,13 +16,17 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Filter;
+import android.widget.Filterable;
 import android.widget.ProgressBar;
 
 import com.github.therajanmaurya.sweeterror.SweetUIErrorHandler;
 import com.mifos.mifosxdroid.R;
+import com.mifos.mifosxdroid.adapters.ClientNameListAdapter;
 import com.mifos.mifosxdroid.adapters.GroupNameListAdapter;
 import com.mifos.mifosxdroid.core.EndlessRecyclerViewScrollListener;
 import com.mifos.mifosxdroid.core.MifosBaseActivity;
@@ -30,6 +36,7 @@ import com.mifos.mifosxdroid.core.util.Toaster;
 import com.mifos.mifosxdroid.dialogfragments.syncgroupsdialog.SyncGroupsDialogFragment;
 import com.mifos.mifosxdroid.online.GroupsActivity;
 import com.mifos.mifosxdroid.online.createnewgroup.CreateNewGroupFragment;
+import com.mifos.objects.client.Client;
 import com.mifos.objects.group.Group;
 import com.mifos.utils.Constants;
 import com.mifos.utils.FragmentConstants;
@@ -66,7 +73,7 @@ import butterknife.OnClick;
  * and unregister the ScrollListener and SwipeLayout.
  */
 public class GroupsListFragment extends MifosBaseFragment implements GroupsListMvpView,
-        RecyclerItemClickListener.OnItemClickListener, SwipeRefreshLayout.OnRefreshListener {
+        RecyclerItemClickListener.OnItemClickListener, SwipeRefreshLayout.OnRefreshListener, Filterable {
 
 
     @BindView(R.id.rv_groups)
@@ -89,6 +96,7 @@ public class GroupsListFragment extends MifosBaseFragment implements GroupsListM
 
     LinearLayoutManager mLayoutManager;
     private List<Group> mGroupList;
+    private List<Group> groupsFullList;
     private List<Group> selectedGroups;
     private Boolean isParentFragment = false;
     private View rootView;
@@ -158,6 +166,7 @@ public class GroupsListFragment extends MifosBaseFragment implements GroupsListM
         super.onCreate(savedInstanceState);
         ((MifosBaseActivity) getActivity()).getActivityComponent().inject(this);
         mGroupList = new ArrayList<>();
+        groupsFullList = new ArrayList<>();
         selectedGroups = new ArrayList<>();
         actionModeCallback = new ActionModeCallback();
         if (getArguments() != null) {
@@ -268,6 +277,7 @@ public class GroupsListFragment extends MifosBaseFragment implements GroupsListM
             }
         });
         mGroupListAdapter.setGroups(groups);
+        this.groupsFullList = new ArrayList<>(mGroupList);
     }
 
 
@@ -281,6 +291,31 @@ public class GroupsListFragment extends MifosBaseFragment implements GroupsListM
         mGroupList.addAll(groups);
         mGroupListAdapter.notifyDataSetChanged();
     }
+
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+       // inflater.inflate(R.menu.menu_main,menu);
+        MenuItem Item = menu.findItem(R.id.mItem_menu_search);
+        Item.setVisible(true);
+        SearchView searchView = (SearchView) Item.getActionView();
+
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                return false;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                getFilter().filter(newText);
+
+                return false;
+            };
+        });
+        super.onCreateOptionsMenu(menu, inflater);
+    }
+
 
     /**
      * This method will be called, if fetched groupList is Empty and show there is no Group to show.
@@ -369,6 +404,42 @@ public class GroupsListFragment extends MifosBaseFragment implements GroupsListM
             actionMode.invalidate();
         }
     }
+
+    @Override
+    public Filter getFilter() {
+        return filter;
+    }
+
+    final Filter filter = new Filter() {
+        @Override
+        protected FilterResults performFiltering(CharSequence charSequence) {
+            List<Group> filteredList = new ArrayList<>();
+            if (charSequence.toString().isEmpty()) {
+                filteredList.addAll(groupsFullList);
+            } else {
+                String filterPattern = charSequence.toString().toLowerCase().trim();
+
+                for(Group group: groupsFullList){
+                    if(group.getName().toLowerCase().contains(filterPattern)){
+                        filteredList.add(group);
+                    }
+                    if(group.getAccountNo().contains(filterPattern)){
+                        filteredList.add(group);
+                    }
+                }
+            }
+            FilterResults filterResults = new FilterResults();
+            filterResults.values = filteredList;
+            return filterResults;
+        }
+
+        @Override
+        protected void publishResults(CharSequence charSequence, FilterResults filterResults) {
+            mGroupList.clear();
+            mGroupList.addAll((List) filterResults.values);
+            mGroupListAdapter.notifyDataSetChanged();
+        }
+    };
 
 
     /**

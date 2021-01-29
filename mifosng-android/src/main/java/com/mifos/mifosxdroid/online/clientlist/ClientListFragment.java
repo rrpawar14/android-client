@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Parcelable;
 
+import androidx.appcompat.widget.SearchView;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import androidx.appcompat.view.ActionMode;
@@ -16,9 +17,12 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.Menu;
+import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Filter;
+import android.widget.Filterable;
 import android.widget.ProgressBar;
 
 import com.github.therajanmaurya.sweeterror.SweetUIErrorHandler;
@@ -70,7 +74,7 @@ import static android.view.View.VISIBLE;
  * and unregister the ScrollListener and SwipeLayout.
  */
 public class ClientListFragment extends MifosBaseFragment
-        implements OnItemClickListener, ClientListMvpView, SwipeRefreshLayout.OnRefreshListener {
+        implements OnItemClickListener, ClientListMvpView, SwipeRefreshLayout.OnRefreshListener, Filterable{
 
     public static final String LOG_TAG = ClientListFragment.class.getSimpleName();
 
@@ -101,6 +105,9 @@ public class ClientListFragment extends MifosBaseFragment
     private LinearLayoutManager mLayoutManager;
     private Integer clickedPosition = -1;
     private SweetUIErrorHandler sweetUIErrorHandler;
+    private RecyclerView recyclerView;
+    private List<Client> clientsListFilter;
+    private List<Client> clientsFullList;
 
     @Override
     public void onItemClick(View childView, int position) {
@@ -164,7 +171,8 @@ public class ClientListFragment extends MifosBaseFragment
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         clientList = new ArrayList<>();
-        selectedClients = new ArrayList<>();
+        this.selectedClients = new ArrayList<>();
+        this.clientsListFilter = new ArrayList<>();
         actionModeCallback = new ActionModeCallback();
         if (getArguments() != null) {
             clientList = getArguments().getParcelableArrayList(Constants.CLIENTS);
@@ -175,12 +183,21 @@ public class ClientListFragment extends MifosBaseFragment
     }
 
     @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+
+        int id = item.getItemId();
+        if(id == R.id.mItem_search){
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle
             savedInstanceState) {
         rootView = inflater.inflate(R.layout.fragment_client, container, false);
         ((MifosBaseActivity) getActivity()).getActivityComponent().inject(this);
         setToolbarTitle(getResources().getString(R.string.clients));
-
         ButterKnife.bind(this, rootView);
         mClientListPresenter.attachView(this);
 
@@ -292,10 +309,12 @@ public class ClientListFragment extends MifosBaseFragment
     /**
      * Setting ClientList to the Adapter and updating the Adapter.
      */
+
     @Override
     public void showClientList(List<Client> clients) {
         clientList = clients;
         mClientNameListAdapter.setClients(clients);
+        this.clientsFullList = new ArrayList<>(clients);
         mClientNameListAdapter.notifyDataSetChanged();
     }
 
@@ -309,6 +328,42 @@ public class ClientListFragment extends MifosBaseFragment
         clientList.addAll(clients);
         mClientNameListAdapter.notifyDataSetChanged();
     }
+
+    /**
+     * Initialize the contents of the Fragment host's standard options menu.  You
+     * should place your menu items in to <var>menu</var>.  For this method
+     * to be called, you must have first called {@link #setHasOptionsMenu}.  See
+     * for more information.
+     *
+     * @param menu     The options menu in which you place your items.
+     * @param inflater
+     * @see #setHasOptionsMenu
+     * @see #onPrepareOptionsMenu
+     * @see #onOptionsItemSelected
+     */
+    @Override
+    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
+        MenuItem Item = menu.findItem(R.id.mItem_menu_search);
+        Item.setVisible(true);
+        SearchView searchView = (SearchView) Item.getActionView();
+
+        searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+
+
+            @Override
+            public boolean onQueryTextSubmit(String query) {
+                return false;
+            }
+
+            @Override
+            public boolean onQueryTextChange(String newText) {
+                 getFilter().filter(newText);
+
+                return false;
+            };
+        });
+        super.onCreateOptionsMenu(menu, inflater);
+    };
 
     /**
      * Showing Fetched ClientList size is 0 and show there is no client to show.
@@ -376,6 +431,43 @@ public class ClientListFragment extends MifosBaseFragment
             actionMode.invalidate();
         }
     }
+
+    @Override
+    public Filter getFilter() {
+        return filter;
+    }
+
+    final Filter filter = new Filter() {
+
+        @Override
+        protected FilterResults performFiltering(CharSequence charSequence) {
+            List<Client> filteredList = new ArrayList<>();
+            if (charSequence.toString().isEmpty()) {
+                filteredList.addAll(clientsFullList);
+            } else {
+                String filterPattern = charSequence.toString().toLowerCase().trim();
+
+                for(Client client: clientsFullList){
+                    if(client.getDisplayName().toLowerCase().contains(filterPattern)){
+                        filteredList.add(client);
+                    }
+                    if(client.getAccountNo().contains(filterPattern)){
+                        filteredList.add(client);
+                    }
+                }
+            }
+            FilterResults filterResults = new FilterResults();
+            filterResults.values = filteredList;
+            return filterResults;
+        }
+
+        @Override
+        protected void publishResults(CharSequence charSequence, FilterResults filterResults) {
+            clientList.clear();
+            clientList.addAll((List) filterResults.values);
+            mClientNameListAdapter.notifyDataSetChanged();
+        }
+    };
 
     /**
      * This ActionModeCallBack Class handling the User Event after the Selection of Clients. Like

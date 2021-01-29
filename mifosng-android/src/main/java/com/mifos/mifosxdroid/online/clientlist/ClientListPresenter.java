@@ -32,7 +32,7 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
     private List<Client> mDbClientList;
     private List<Client> mSyncClientList;
 
-    private int limit = 100;
+    private int limit;
     private Boolean loadmore = false;
     private Boolean mRestApiClientSyncStatus = false;
     private Boolean mDatabaseClientSyncStatus = false;
