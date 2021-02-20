@@ -110,6 +110,8 @@ android {
     lintOptions {
         abortOnError false
         disable 'InvalidPackage'
+        disable 'MissingTranslation'
+        disable 'OutdatedLibrary'
     }
 
 
