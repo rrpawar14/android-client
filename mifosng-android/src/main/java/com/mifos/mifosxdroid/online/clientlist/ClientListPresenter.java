@@ -30,6 +30,7 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
 
     private final DataManagerClient mDataManagerClient;
     private final DataManagerOffices mDataManagerOffices;
+   // private final ClientListFragment mClientListFragment;
     private CompositeSubscription mSubscriptions;
 
     private List<Client> mDbClientList;
@@ -45,6 +46,7 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
     public ClientListPresenter(DataManagerClient dataManagerClient, DataManagerOffices dataManagerOffices) {
         mDataManagerClient = dataManagerClient;
         mDataManagerOffices = dataManagerOffices;
+//        mClientListFragment = clientListFragment;
         mDbClientList = new ArrayList<>();
         mSyncClientList = new ArrayList<>();
     }
@@ -195,6 +197,10 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
 
                     @Override
                     public void onNext(Page<Client> clientPage) {
+                        mSyncClientList = clientPage.getPageItems();
+                       // ClientListPresenter mclientListFragment = new ClientListPresenter();
+                     //   mClientListFragment.showClientList(mSyncClientList);
+                        getMvpView().showClientList(mSyncClientList);
 
                     }
                 }));
