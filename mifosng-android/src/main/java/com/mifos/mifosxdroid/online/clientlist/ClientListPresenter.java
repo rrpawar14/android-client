@@ -1,10 +1,12 @@
 package com.mifos.mifosxdroid.online.clientlist;
 
 import com.mifos.api.datamanager.DataManagerClient;
+import com.mifos.api.datamanager.DataManagerOffices;
 import com.mifos.mifosxdroid.R;
 import com.mifos.mifosxdroid.base.BasePresenter;
 import com.mifos.objects.client.Client;
 import com.mifos.objects.client.Page;
+import com.mifos.objects.organisation.Office;
 import com.mifos.utils.EspressoIdlingResource;
 
 import java.util.ArrayList;
@@ -27,19 +29,22 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
     private static final String LOG_TAG = ClientListPresenter.class.getSimpleName();
 
     private final DataManagerClient mDataManagerClient;
+    private final DataManagerOffices mDataManagerOffices;
     private CompositeSubscription mSubscriptions;
 
     private List<Client> mDbClientList;
     private List<Client> mSyncClientList;
 
-    private int limit;
+    // private int limit = 100;
+    private int officeId = 1;
     private Boolean loadmore = false;
     private Boolean mRestApiClientSyncStatus = false;
     private Boolean mDatabaseClientSyncStatus = false;
 
     @Inject
-    public ClientListPresenter(DataManagerClient dataManagerClient) {
+    public ClientListPresenter(DataManagerClient dataManagerClient, DataManagerOffices dataManagerOffices) {
         mDataManagerClient = dataManagerClient;
+        mDataManagerOffices = dataManagerOffices;
         mDbClientList = new ArrayList<>();
         mSyncClientList = new ArrayList<>();
     }
@@ -65,7 +70,7 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
      */
     public void loadClients(Boolean loadmore, int offset) {
         this.loadmore = loadmore;
-        loadClients(true, offset, limit);
+        loadClients(true, offset, officeId);
     }
 
     /**
@@ -115,16 +120,17 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
      * @param offset Value give from which position Fetch ClientList
      * @param limit  Maximum size of the Center
      */
-    public void loadClients(boolean paged, int offset, int limit) {
+    public void loadClients(boolean paged, int offset, int officeId) {
         EspressoIdlingResource.increment(); // App is busy until further notice.
         checkViewAttached();
         getMvpView().showProgressbar(true);
-        mSubscriptions.add(mDataManagerClient.getAllClients(paged, offset, limit)
+        mSubscriptions.add(mDataManagerClient.getAllClientsByOfficeId(paged, offset, officeId)
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribeOn(Schedulers.io())
                 .subscribe(new Subscriber<Page<Client>>() {
                     @Override
                     public void onCompleted() {
+                        loadOffices();
                     }
 
                     @Override
@@ -158,6 +164,65 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
                         getMvpView().showProgressbar(false);
 
                         EspressoIdlingResource.decrement(); // App is idle.
+                    }
+                }));
+    }
+
+    public void loadClientsByOfficeId(boolean paged, int offset, int officeId) {
+      //  getMvpView().showProgressbar(true);
+        mSubscriptions.add(mDataManagerClient.getAllClientsByOfficeId(paged, offset, officeId)
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeOn(Schedulers.io())
+                .subscribe(new Subscriber<Page<Client>>() {
+                    @Override
+                    public void onCompleted() {
+                       // loadOffices();
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        getMvpView().showProgressbar(false);
+
+                        if (loadmore) {
+                            getMvpView().showMessage(R.string.failed_to_load_client);
+                        } else {
+                            getMvpView().showError();
+                        }
+
+                        EspressoIdlingResource.decrement(); // App is idle.
+
+                    }
+
+                    @Override
+                    public void onNext(Page<Client> clientPage) {
+
+                    }
+                }));
+    }
+
+
+    public void loadOffices() {
+        checkViewAttached();
+        getMvpView().showProgressbar(true);
+        mSubscriptions.add(mDataManagerOffices.getOffices()
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeOn(Schedulers.io())
+                .subscribe(new Subscriber<List<Office>>() {
+                    @Override
+                    public void onCompleted() {
+                        getMvpView().showProgressbar(false);
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        getMvpView().showProgressbar(false);
+                        getMvpView().showMessage(R.string.failed_to_fetch_offices);
+                    }
+
+                    @Override
+                    public void onNext(List<Office> offices) {
+                        getMvpView().showProgressbar(false);
+                        getMvpView().showOffices(offices);
                     }
                 }));
     }

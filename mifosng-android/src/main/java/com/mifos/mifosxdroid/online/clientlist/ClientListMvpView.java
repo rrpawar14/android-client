@@ -2,6 +2,7 @@ package com.mifos.mifosxdroid.online.clientlist;
 
 import com.mifos.mifosxdroid.base.MvpView;
 import com.mifos.objects.client.Client;
+import com.mifos.objects.organisation.Office;
 
 import java.util.List;
 
@@ -23,5 +24,7 @@ public interface ClientListMvpView extends MvpView {
     void showMessage(int message);
 
     void showError();
+
+    void showOffices(List<Office> offices);
 
 }

@@ -17,6 +17,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 
+import androidx.appcompat.view.ActionMode;
 import androidx.core.app.ActivityCompat;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.core.content.ContextCompat;
@@ -43,16 +44,21 @@ import android.widget.Toast;
 
 import com.joanzapata.iconify.fonts.MaterialIcons;
 import com.joanzapata.iconify.widget.IconTextView;
+import com.mifos.api.datamanager.DataManagerClient;
+import com.mifos.api.datamanager.DataManagerDataTable;
 import com.mifos.mifosxdroid.R;
 import com.mifos.mifosxdroid.activity.pinpointclient.PinpointClientActivity;
+import com.mifos.mifosxdroid.adapters.ClientNameListAdapter;
 import com.mifos.mifosxdroid.adapters.LoanAccountsListAdapter;
 import com.mifos.mifosxdroid.adapters.SavingsAccountsListAdapter;
 import com.mifos.mifosxdroid.core.MifosBaseActivity;
 import com.mifos.mifosxdroid.core.MifosBaseFragment;
 import com.mifos.mifosxdroid.core.util.Toaster;
+import com.mifos.mifosxdroid.dialogfragments.syncclientsdialog.SyncClientsDialogFragment;
 import com.mifos.mifosxdroid.online.activate.ActivateFragment;
 import com.mifos.mifosxdroid.online.clientcharge.ClientChargeFragment;
 import com.mifos.mifosxdroid.online.clientidentifiers.ClientIdentifiersFragment;
+import com.mifos.mifosxdroid.online.clientlist.ClientListFragment;
 import com.mifos.mifosxdroid.online.datatable.DataTableFragment;
 import com.mifos.mifosxdroid.online.documentlist.DocumentListFragment;
 import com.mifos.mifosxdroid.online.loanaccount.LoanAccountFragment;
@@ -105,12 +111,14 @@ public class ClientDetailsFragment extends MifosBaseFragment implements ClientDe
     public static final int MENU_ITEM_IDENTIFIERS = 1007;
     public static final int MENU_ITEM_SURVEYS = 1008;
     public static final int MENU_ITEM_NOTE = 1009;
+    public static final int MENU_ITEM_SYNC = 1011;
 
     String imgDecodableString;
     private final String TAG = ClientDetailsFragment.class.getSimpleName();
 
     public int clientId;
     List<Charges> chargesList = new ArrayList<>();
+    private DataManagerClient mDataManagerClient;
 
     @BindView(R.id.tv_fullName)
     TextView tv_fullName;
@@ -179,7 +187,7 @@ public class ClientDetailsFragment extends MifosBaseFragment implements ClientDe
     private AccountAccordion accountAccordion;
     private boolean isClientActive = false;
 
-
+    // public ClientDetailsFragment(){}
     /**
      * Use this factory method to create a new instance of
      * this fragment using the provided parameters.
@@ -309,6 +317,7 @@ public class ClientDetailsFragment extends MifosBaseFragment implements ClientDe
             menu.add(Menu.NONE, MENU_ITEM_IDENTIFIERS, Menu.NONE, getString(R.string.identifiers));
             menu.add(Menu.NONE, MENU_ITEM_SURVEYS, Menu.NONE, getString(R.string.survey));
             menu.add(Menu.NONE, MENU_ITEM_NOTE, Menu.NONE, getString(R.string.note));
+            menu.add(Menu.NONE, MENU_ITEM_SYNC, Menu.NONE, getString(R.string.sync));
         }
         super.onPrepareOptionsMenu(menu);
     }
@@ -347,6 +356,9 @@ public class ClientDetailsFragment extends MifosBaseFragment implements ClientDe
                 break;
             case MENU_ITEM_NOTE:
                 loadNotes();
+                break;
+            case MENU_ITEM_SYNC:
+                syncClient();
         }
         return super.onOptionsItemSelected(item);
     }
@@ -410,6 +422,19 @@ public class ClientDetailsFragment extends MifosBaseFragment implements ClientDe
         fragmentTransaction.addToBackStack(FragmentConstants.FRAG_CLIENT_DETAILS);
         fragmentTransaction.replace(R.id.container, noteFragment);
         fragmentTransaction.commit();
+    }
+
+    public void syncClient() {
+
+        List<Client> mClientList = (List<Client>) mDataManagerClient.getClient(clientId);
+        SyncClientsDialogFragment syncClientsDialogFragment =
+                SyncClientsDialogFragment.newInstance(mClientList);
+        FragmentTransaction fragmentTransaction = getActivity()
+                .getSupportFragmentManager().beginTransaction();
+        fragmentTransaction.addToBackStack(FragmentConstants.FRAG_CLIENT_SYNC);
+        syncClientsDialogFragment.setCancelable(false);
+        syncClientsDialogFragment.show(fragmentTransaction,
+                getResources().getString(R.string.sync_clients));
     }
 
     public void loadClientCharges() {
@@ -842,6 +867,65 @@ public class ClientDetailsFragment extends MifosBaseFragment implements ClientDe
                     listView.requestLayout();
                 }
             }
+        }
+    }
+
+    @Inject
+    ClientNameListAdapter mClientNameListAdapter;
+
+    private List<Client> selectedClients;
+    private List<Client> clientList;
+    private ActionMode actionMode;
+
+    /**
+     * This ActionModeCallBack Class handling the User Event after the Selection of Clients. Like
+     * Click of Menu Sync Button and finish the ActionMode
+     */
+    private class ActionModeCallback implements ActionMode.Callback {
+        @SuppressWarnings("unused")
+        private final String LOG_TAG = ClientDetailsFragment.ActionModeCallback.class.getSimpleName();
+
+        @Override
+        public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+            mode.getMenuInflater().inflate(R.menu.menu_sync, menu);
+            return true;
+        }
+
+        @Override
+        public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+            return false;
+        }
+
+        @Override
+        public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+            switch (item.getItemId()) {
+                case R.id.action_sync:
+
+                    selectedClients.clear();
+                    for (Integer position : mClientNameListAdapter.getSelectedItems()) {
+                        selectedClients.add(clientList.get(position));
+                    }
+
+                    SyncClientsDialogFragment syncClientsDialogFragment =
+                            SyncClientsDialogFragment.newInstance(selectedClients);
+                    FragmentTransaction fragmentTransaction = getActivity()
+                            .getSupportFragmentManager().beginTransaction();
+                    fragmentTransaction.addToBackStack(FragmentConstants.FRAG_CLIENT_SYNC);
+                    syncClientsDialogFragment.setCancelable(false);
+                    syncClientsDialogFragment.show(fragmentTransaction,
+                            getResources().getString(R.string.sync_clients));
+                    mode.finish();
+                    return true;
+
+                default:
+                    return false;
+            }
+        }
+
+        @Override
+        public void onDestroyActionMode(ActionMode mode) {
+            mClientNameListAdapter.clearSelection();
+            actionMode = null;
         }
     }
 }
