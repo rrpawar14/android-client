@@ -49,7 +49,9 @@ import com.mifos.utils.FragmentConstants;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.function.ToIntFunction;
 
 import javax.inject.Inject;
 
@@ -81,7 +83,7 @@ import static android.view.View.VISIBLE;
  * and unregister the ScrollListener and SwipeLayout.
  */
 public class ClientListFragment extends MifosBaseFragment
-        implements OnItemClickListener, ClientListMvpView, SwipeRefreshLayout.OnRefreshListener, Filterable, AdapterView.OnItemSelectedListener {
+        implements OnItemClickListener, ClientListMvpView, SwipeRefreshLayout.OnRefreshListener, Filterable {
 
     public static final String LOG_TAG = ClientListFragment.class.getSimpleName();
 
@@ -191,7 +193,7 @@ public class ClientListFragment extends MifosBaseFragment
         super.onCreate(savedInstanceState);
         clientList = new ArrayList<>();
         officeList = new ArrayList<>();
-        clientOffices = new String[1000];
+     //   clientOffices = new String[1000];
         this.selectedClients = new ArrayList<>();
         this.clientsListFilter = new ArrayList<>();
         actionModeCallback = new ActionModeCallback();
@@ -260,29 +262,65 @@ public class ClientListFragment extends MifosBaseFragment
             mClientNameListAdapter.updateItem(clickedPosition);
         }
     }
+    public class ObjectComparator implements Comparator<Office> {
 
-
-
-    @Override
-    public void showOffices(List<Office> offices) {
-        System.out.println("offices: "+ offices);
-        officeList.addAll(createNewClientPresenter.filterOffices(offices));
-        System.out.println("officeList: "+ officeList);
-
-        clientOffices = officeList.toArray(new String[0]);
-        System.out.println("officeListArray: "+ clientOffices);
-
-        Collections.sort(officeList);
-        searchOptionsAdapter = new ArrayAdapter<>(getActivity(),
-                android.R.layout.simple_spinner_item, clientOffices);
-        searchOptionsAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        sp_search.setAdapter(searchOptionsAdapter);
-        sp_search.setOnItemSelectedListener(this);
-        mClientNameListAdapter.notifyDataSetChanged();
+        public int compare(Office obj1, Office obj2) {
+            return obj1.getId().compareTo(obj2.getId());
+        }
     }
 
     private ArrayAdapter searchOptionsAdapter;
     ArrayList<String> spinnerValues = new ArrayList<>();
+
+    @Override
+    public void showOffices(List<Office> offices) {
+        System.out.println("offices: "+ offices);
+
+        officeList.clear();
+        //
+        Collections.sort(offices); // it needs List<>
+        //
+        officeList.addAll(createNewClientPresenter.filterOffices(offices));
+        List<String> listString = new ArrayList<>();
+       // listString = new ArrayList<>(officeList.size());
+        /* for (Integer myInt : officeList) {
+            listString.add(String.valueOf(myInt));
+        }*/
+        System.out.println("listString: "+ listString);
+        clientOffices = officeList.toArray(new String[0]);
+        System.out.println("officeListArray: "+ clientOffices);
+        searchOptionsAdapter = new ArrayAdapter<>(getActivity(),
+                android.R.layout.simple_spinner_item, officeList);
+
+        searchOptionsAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        sp_search.setAdapter(searchOptionsAdapter);
+        // sp_search.setOnItemSelectedListener(this);
+         // mClientNameListAdapter.notifyDataSetChanged();
+        sp_search.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+                String text = adapterView.getItemAtPosition(i).toString();
+               // Object id = sp_search.getSelectedItem();
+               // System.out.println("id:" + id);
+                System.out.println("sp_search:" + sp_search);
+                System.out.println("onItemSelected:" + text);
+                System.out.println("Integer view:" + i);
+                int inti = i + 1;
+                System.out.println("int + 1 :" + inti);
+                Toast.makeText(adapterView.getContext(), text, Toast.LENGTH_SHORT).show();
+
+                mClientListPresenter.loadClientsByOfficeId(true, 0, inti);
+                mClientNameListAdapter.notifyDataSetChanged();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> adapterView) {
+
+            }
+        });
+    }
+
+
     /**
      * This method initializes the all Views.
      */
@@ -516,23 +554,6 @@ public class ClientListFragment extends MifosBaseFragment
             mClientNameListAdapter.notifyDataSetChanged();
         }
     };
-
-    @Override
-    public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
-        String text = adapterView.getItemAtPosition(i).toString();
-        System.out.println("onItemSelected:"+ text);
-        System.out.println("Integer view:"+ i);
-        Toast.makeText(adapterView.getContext(),text,Toast.LENGTH_SHORT).show();
-       // mClientListPresenter.loadClients(true,i, i);
-        int id = i +1;
-        mClientListPresenter.loadClientsByOfficeId(true, 0, id);
-        mClientNameListAdapter.notifyDataSetChanged();
-    }
-
-    @Override
-    public void onNothingSelected(AdapterView<?> adapterView) {
-
-    }
 
     /**
      * This ActionModeCallBack Class handling the User Event after the Selection of Clients. Like

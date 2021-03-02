@@ -24,7 +24,7 @@ import java.util.List;
  */
 @Table(database = MifosDatabase.class)
 @ModelContainer
-public class Office extends MifosBaseModel implements Parcelable {
+public class Office extends MifosBaseModel implements Parcelable, Comparable<Office> {
 
     @PrimaryKey
     Integer id;
@@ -143,4 +143,9 @@ public class Office extends MifosBaseModel implements Parcelable {
             return new Office[size];
         }
     };
+
+    @Override
+    public int compareTo(Office o) {
+        return this.getId().compareTo(o.getId());
+    }
 }

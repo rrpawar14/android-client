@@ -198,11 +198,36 @@ public class CreateNewClientPresenter extends BasePresenter<CreateNewClientMvpVi
 
     public List<String> filterOffices(List<Office> offices) {
         final List<String> officesList = new ArrayList<>();
+
         Observable.from(offices)
                 .subscribe(new Action1<Office>() {
                     @Override
                     public void call(Office office) {
                         officesList.add(office.getName());
+                    }
+                });
+        return officesList;
+    }
+
+    public List<Office> filterOfficeObject(List<Office> offices) {
+        final List<Office> officesList = new ArrayList<>();
+        Observable.from(offices)
+                .subscribe(new Action1<Office>() {
+                    @Override
+                    public void call(Office office) {
+                        officesList.add(office);
+                    }
+                });
+        return officesList;
+    }
+
+    public List<Integer> fetchOfficeId(List<Office> offices) {
+        final List<Integer> officesList = new ArrayList<>();;
+        Observable.from(offices)
+                .subscribe(new Action1<Office>() {
+                    @Override
+                    public void call(Office office) {
+                        officesList.add(office.getId());
                     }
                 });
         return officesList;
