@@ -1,19 +1,30 @@
 package com.mifos.mifosxdroid.online.clientlist;
 
+import android.content.Context;
+
+import androidx.appcompat.view.ActionMode;
+
 import com.mifos.api.datamanager.DataManagerClient;
+import com.mifos.api.datamanager.DataManagerOffices;
 import com.mifos.mifosxdroid.R;
 import com.mifos.mifosxdroid.base.BasePresenter;
+import com.mifos.mifosxdroid.injection.ActivityContext;
 import com.mifos.objects.client.Client;
 import com.mifos.objects.client.Page;
+import com.mifos.objects.organisation.Office;
+import com.mifos.objects.templates.clients.OfficeOptions;
 import com.mifos.utils.EspressoIdlingResource;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 import javax.inject.Inject;
 
+import rx.Observable;
 import rx.Subscriber;
 import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Action1;
 import rx.schedulers.Schedulers;
 import rx.subscriptions.CompositeSubscription;
 
@@ -27,19 +38,23 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
     private static final String LOG_TAG = ClientListPresenter.class.getSimpleName();
 
     private final DataManagerClient mDataManagerClient;
+    private final DataManagerOffices mDataManagerOffices;
     private CompositeSubscription mSubscriptions;
+    private Context c;
 
     private List<Client> mDbClientList;
     private List<Client> mSyncClientList;
 
-    private int limit;
+    private int officeId = 1;
     private Boolean loadmore = false;
     private Boolean mRestApiClientSyncStatus = false;
     private Boolean mDatabaseClientSyncStatus = false;
 
     @Inject
-    public ClientListPresenter(DataManagerClient dataManagerClient) {
+    public ClientListPresenter(DataManagerClient dataManagerClient, DataManagerOffices dataManagerOffices, @ActivityContext Context context) {
         mDataManagerClient = dataManagerClient;
+        mDataManagerOffices = dataManagerOffices;
+        c = context;
         mDbClientList = new ArrayList<>();
         mSyncClientList = new ArrayList<>();
     }
@@ -65,7 +80,7 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
      */
     public void loadClients(Boolean loadmore, int offset) {
         this.loadmore = loadmore;
-        loadClients(true, offset, limit);
+        loadClients(true, offset, officeId);
     }
 
     /**
@@ -115,16 +130,17 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
      * @param offset Value give from which position Fetch ClientList
      * @param limit  Maximum size of the Center
      */
-    public void loadClients(boolean paged, int offset, int limit) {
+    public void loadClients(boolean paged, int offset, int officeId) {
         EspressoIdlingResource.increment(); // App is busy until further notice.
         checkViewAttached();
         getMvpView().showProgressbar(true);
-        mSubscriptions.add(mDataManagerClient.getAllClients(paged, offset, limit)
+        mSubscriptions.add(mDataManagerClient.getAllClientsByOfficeId(paged, offset, officeId)
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribeOn(Schedulers.io())
                 .subscribe(new Subscriber<Page<Client>>() {
                     @Override
                     public void onCompleted() {
+                        loadOffices();
                     }
 
                     @Override
@@ -162,6 +178,76 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
                 }));
     }
 
+    public void loadClientsByOfficeId(boolean paged, int offset, int officeId) {
+        mSubscriptions.add(mDataManagerClient.getAllClientsByOfficeId(paged, offset, officeId)
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeOn(Schedulers.io())
+                .subscribe(new Subscriber<Page<Client>>() {
+                    @Override
+                    public void onCompleted() {
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        getMvpView().showProgressbar(false);
+
+                        if (loadmore) {
+                            getMvpView().showMessage(R.string.failed_to_load_client);
+                        } else {
+                            getMvpView().showError();
+                        }
+                        EspressoIdlingResource.decrement(); // App is idle.
+                    }
+
+                    @Override
+                    public void onNext(Page<Client> clientPage) {
+                        mSyncClientList = clientPage.getPageItems();
+                        getMvpView().showClientList(mSyncClientList);
+                    }
+                }));
+    }
+
+
+    public void loadOffices() {
+        checkViewAttached();
+        mSubscriptions.add(mDataManagerOffices.getOfficesFields()
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeOn(Schedulers.io())
+                .subscribe(new Subscriber<List<OfficeOptions>>() {
+                    @Override
+                    public void onCompleted() {
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        getMvpView().showMessage(R.string.failed_to_fetch_offices);
+                    }
+
+                    @Override
+                    public void onNext(List<OfficeOptions> officeOptions) {
+                        getMvpView().showOffices(officeOptions);
+                    }
+                }));
+    }
+
+    HashMap<String, Integer> createOfficeNameIdMap(List<OfficeOptions> offices,
+                                                   final List<String> officeNames) {
+        final HashMap<String, Integer> officeMap = new HashMap<>();
+
+        officeMap.put(c.getResources().getString(R.string.spinner_office), -1);
+        officeNames.clear();
+        officeNames.add(c.getResources().getString(R.string.spinner_office));
+        Observable.from(offices)
+                .subscribe(new Action1<OfficeOptions>() {
+                    @Override
+                    public void call(OfficeOptions office) {
+                        officeMap.put(office.getName(), office.getId());
+                        officeNames.add(office.getName());
+                    }
+                });
+        return officeMap;
+    }
+
 
     /**
      * This Method Loading the Client From Database. It request Observable to DataManagerClient
@@ -177,7 +263,6 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
                 .subscribe(new Subscriber<Page<Client>>() {
                     @Override
                     public void onCompleted() {
-
                     }
 
                     @Override
