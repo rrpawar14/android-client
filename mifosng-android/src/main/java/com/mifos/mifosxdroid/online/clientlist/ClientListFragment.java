@@ -9,6 +9,7 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.os.Parcelable;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.widget.SearchView;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
@@ -350,15 +351,25 @@ public class ClientListFragment extends MifosBaseFragment
 
     }
 
+    @Override
+    public void showClientListLoadMore(List<Client> clients) {
+
+            clientList = clients;
+            mClientNameListAdapter.setClients(clients);
+            this.clientsFullList = new ArrayList<>(clients);
+            mClientNameListAdapter.notifyDataSetChanged();
+    }
+
     /**
      * Updating Adapter Attached ClientList
      *
      * @param clients List<Client></>
      */
+
     @Override
     public void showLoadMoreClients(List<Client> clients) {
         clientList.addAll(clients);
-        mClientNameListAdapter.notifyDataSetChanged();
+       // mClientNameListAdapter.notifyDataSetChanged();
     }
 
     /**
@@ -440,7 +451,7 @@ public class ClientListFragment extends MifosBaseFragment
         int officeId = officeNameIdHashMap.get(officeNames.get(i));
         if (officeId != -1) {
             mClientListPresenter.loadClientsByOfficeId(false, 0, officeId);
-            //  mClientNameListAdapter.notifyDataSetChanged();
+          //  mClientNameListAdapter.notifyDataSetChanged();
         } else {
             Toaster.show(rootView, getString(R.string.error_select_office));
         }

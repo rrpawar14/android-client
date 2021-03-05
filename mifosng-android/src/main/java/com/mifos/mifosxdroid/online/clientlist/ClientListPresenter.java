@@ -44,6 +44,7 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
 
     private List<Client> mDbClientList;
     private List<Client> mSyncClientList;
+    private List<Client> mNewOfficeClientList;
 
     private int officeId = 1;
     private Boolean loadmore = false;
@@ -57,6 +58,7 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
         c = context;
         mDbClientList = new ArrayList<>();
         mSyncClientList = new ArrayList<>();
+        mNewOfficeClientList = new ArrayList<>();
     }
 
     @Override
@@ -208,8 +210,8 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
 
                     @Override
                     public void onNext(Page<Client> clientPage) {
-                        mSyncClientList = clientPage.getPageItems();
-                         getMvpView().showClientList(mSyncClientList);
+                        mNewOfficeClientList = clientPage.getPageItems();
+                        getMvpView().showClientListLoadMore(mNewOfficeClientList);
                         getMvpView().showProgressbar(false);
 
                         EspressoIdlingResource.decrement(); // App is idle.

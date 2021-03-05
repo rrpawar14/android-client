@@ -27,4 +27,6 @@ public interface ClientListMvpView extends MvpView {
     void showError();
 
     void showOffices(List<OfficeOptions> offices);
+
+    void showClientListLoadMore(List<Client>  clients);
 }
