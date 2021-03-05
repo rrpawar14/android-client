@@ -127,6 +127,7 @@ public class ClientListFragment extends MifosBaseFragment
     private List<Client> clientsListFilter;
     private List<Client> clientsFullList;
     private List<String> officeList;
+    private Boolean isSearchFilter = false;
 
     @Override
     public void onItemClick(View childView, int position) {
@@ -333,10 +334,20 @@ public class ClientListFragment extends MifosBaseFragment
 
     @Override
     public void showClientList(List<Client> clients) {
-        clientList = clients;
-        mClientNameListAdapter.setClients(clients);
-        this.clientsFullList = new ArrayList<>(clients);
-        mClientNameListAdapter.notifyDataSetChanged();
+
+        if(isSearchFilter){
+            clientList = clients;
+            mClientNameListAdapter.setClients(clients);
+            this.clientsFullList = new ArrayList<>(clients);
+            // mClientNameListAdapter.notifyDataSetChanged();
+        }
+        else{
+            clientList = clients;
+            mClientNameListAdapter.setClients(clients);
+            this.clientsFullList = new ArrayList<>(clients);
+            mClientNameListAdapter.notifyDataSetChanged();
+        }
+
     }
 
     /**
@@ -421,6 +432,23 @@ public class ClientListFragment extends MifosBaseFragment
         adapter.notifyDataSetChanged();
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         spinner.setAdapter(adapter);
+    }
+
+
+    @Override
+    public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+        int officeId = officeNameIdHashMap.get(officeNames.get(i));
+        if (officeId != -1) {
+            mClientListPresenter.loadClientsByOfficeId(false, 0, officeId);
+            //  mClientNameListAdapter.notifyDataSetChanged();
+        } else {
+            Toaster.show(rootView, getString(R.string.error_select_office));
+        }
+    }
+
+    @Override
+    public void onNothingSelected(AdapterView<?> adapterView) {
+
     }
 
     public void getSelectedOffice(View v){
@@ -509,27 +537,12 @@ public class ClientListFragment extends MifosBaseFragment
 
         @Override
         protected void publishResults(CharSequence charSequence, FilterResults filterResults) {
+            isSearchFilter = true;
             clientList.clear();
             clientList.addAll((List) filterResults.values);
             mClientNameListAdapter.notifyDataSetChanged();
         }
     };
-
-    @Override
-    public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
-        int officeId = officeNameIdHashMap.get(officeNames.get(i));
-        if (officeId != -1) {
-            mClientListPresenter.loadClientsByOfficeId(false, 0, officeId);
-            mClientNameListAdapter.notifyDataSetChanged();
-        } else {
-            Toaster.show(rootView, getString(R.string.error_select_office));
-        }
-    }
-
-    @Override
-    public void onNothingSelected(AdapterView<?> adapterView) {
-
-    }
 
     /**
      * This ActionModeCallBack Class handling the User Event after the Selection of Clients. Like

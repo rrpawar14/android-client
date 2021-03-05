@@ -162,7 +162,8 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
 
                         mSyncClientList = clientPage.getPageItems();
 
-                        if (mSyncClientList.size() == 0 && !loadmore) {
+
+                      /*  if (mSyncClientList.size() == 0 && !loadmore) {
                             getMvpView().showEmptyClientList(R.string.client);
                             getMvpView().unregisterSwipeAndScrollListener();
                         } else if (mSyncClientList.size() == 0 && loadmore) {
@@ -170,7 +171,10 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
                         } else {
                             mRestApiClientSyncStatus = true;
                             setAlreadyClientSyncStatus();
-                        }
+                        }*/
+                        mRestApiClientSyncStatus = true;
+                       // setAlreadyClientSyncStatus();
+                        getMvpView().showClientList(mSyncClientList);
                         getMvpView().showProgressbar(false);
 
                         EspressoIdlingResource.decrement(); // App is idle.
@@ -179,6 +183,9 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
     }
 
     public void loadClientsByOfficeId(boolean paged, int offset, int officeId) {
+        EspressoIdlingResource.increment(); // App is busy until further notice.
+        checkViewAttached();
+        getMvpView().showProgressbar(true);
         mSubscriptions.add(mDataManagerClient.getAllClientsByOfficeId(paged, offset, officeId)
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribeOn(Schedulers.io())
@@ -202,7 +209,10 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
                     @Override
                     public void onNext(Page<Client> clientPage) {
                         mSyncClientList = clientPage.getPageItems();
-                        getMvpView().showClientList(mSyncClientList);
+                         getMvpView().showClientList(mSyncClientList);
+                        getMvpView().showProgressbar(false);
+
+                        EspressoIdlingResource.decrement(); // App is idle.
                     }
                 }));
     }
