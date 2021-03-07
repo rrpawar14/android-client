@@ -90,7 +90,7 @@ public class DataManagerClient {
     public Observable<Page<Client>> getAllClientsByOfficeId(boolean paged, int offset, int officeId) {
         switch (PrefManager.getUserStatus()) {
             case 0:
-                return mBaseApiManager.getClientsApi().getAllClientsByOfficeId(paged, offset, officeId)
+                return mBaseApiManager.getClientsApi().getAllClientsByOfficeId(paged, offset, officeId,0)
                         .concatMap(new Func1<Page<Client>, Observable<? extends Page<Client>>>() {
                             @Override
                             public Observable<? extends Page<Client>> call(Page<Client>
