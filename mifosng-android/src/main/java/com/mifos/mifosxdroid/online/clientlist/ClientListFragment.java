@@ -234,7 +234,9 @@ public class ClientListFragment extends MifosBaseFragment
         rv_clients.addOnScrollListener(new EndlessRecyclerViewScrollListener(mLayoutManager) {
             @Override
             public void onLoadMore(int page, int totalItemCount) {
-                mClientListPresenter.loadClients(true, totalItemCount);
+                if(totalItemCount>8) {
+                    mClientListPresenter.loadClients(true, totalItemCount);
+                }
             }
         });
 
@@ -272,6 +274,14 @@ public class ClientListFragment extends MifosBaseFragment
         mClientNameListAdapter.setContext(getActivity());
         rv_clients.setLayoutManager(mLayoutManager);
         rv_clients.addOnItemTouchListener(new RecyclerItemClickListener(getActivity(), this));
+        rv_clients.addOnScrollListener(new EndlessRecyclerViewScrollListener(mLayoutManager) {
+            @Override
+            public void onLoadMore(int page, int totalItemCount) {
+                if(totalItemCount>8) {
+                    mClientListPresenter.loadClients(true, totalItemCount);
+                }
+            }
+        });
         rv_clients.setHasFixedSize(true);
         rv_clients.setAdapter(mClientNameListAdapter);
         swipeRefreshLayout.setColorSchemeColors(getActivity()

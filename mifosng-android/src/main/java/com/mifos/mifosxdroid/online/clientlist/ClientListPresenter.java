@@ -50,6 +50,7 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
     private Boolean loadmore = false;
     private Boolean mRestApiClientSyncStatus = false;
     private Boolean mDatabaseClientSyncStatus = false;
+    private Boolean filterSearch = false;
 
     @Inject
     public ClientListPresenter(DataManagerClient dataManagerClient, DataManagerOffices dataManagerOffices, @ActivityContext Context context) {
@@ -82,7 +83,12 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
      */
     public void loadClients(Boolean loadmore, int offset) {
         this.loadmore = loadmore;
-        loadClients(true, offset, officeId);
+        if (!filterSearch){
+            loadClients(false, offset, officeId);
+    }
+    else{
+        loadClientsByOfficeId(false, offset, officeId);
+    }
     }
 
     /**
@@ -184,7 +190,9 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
                 }));
     }
 
-    public void loadClientsByOfficeId(boolean paged, int offset, int officeId) {
+    public void loadClientsByOfficeId(boolean paged, final int offset, int officeId) {
+        this.officeId = officeId;
+        this.filterSearch = true;
         EspressoIdlingResource.increment(); // App is busy until further notice.
         checkViewAttached();
         getMvpView().showProgressbar(true);
@@ -210,11 +218,36 @@ public class ClientListPresenter extends BasePresenter<ClientListMvpView> {
 
                     @Override
                     public void onNext(Page<Client> clientPage) {
-                        mNewOfficeClientList = clientPage.getPageItems();
-                        getMvpView().showClientListLoadMore(mNewOfficeClientList);
+                        if(offset < 8){
+                            System.out.println("offsetlessthan" + offset);
+                       mNewOfficeClientList = clientPage.getPageItems();
+                        getMvpView().showClientList(mNewOfficeClientList);
                         getMvpView().showProgressbar(false);
 
                         EspressoIdlingResource.decrement(); // App is idle.
+
+                        }
+                    else {
+                            System.out.println("offsetgreaterthan"+ offset);
+                        mSyncClientList = clientPage.getPageItems();
+
+
+                        if (mSyncClientList.size() == 0 && !loadmore) {
+                            getMvpView().showEmptyClientList(R.string.client);
+                            getMvpView().unregisterSwipeAndScrollListener();
+                        } else if (mSyncClientList.size() == 0 && loadmore) {
+                            getMvpView().showMessage(R.string.no_more_clients_available);
+                        } else {
+                            mRestApiClientSyncStatus = true;
+                            //   setAlreadyClientSyncStatus();
+                            getMvpView().showClientList(mSyncClientList);
+                            getMvpView().showProgressbar(false);
+
+                            EspressoIdlingResource.decrement(); // App is idle.
+                            //
+                        }
+
+                    }
                     }
                 }));
     }
