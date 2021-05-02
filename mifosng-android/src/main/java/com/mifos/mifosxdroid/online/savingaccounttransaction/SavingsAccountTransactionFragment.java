@@ -9,6 +9,9 @@ import android.R.layout;
 import android.content.DialogInterface;
 import android.os.Bundle;
 import androidx.fragment.app.DialogFragment;
+
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -43,6 +46,7 @@ import com.mifos.utils.PrefManager;
 import com.mifos.utils.Utils;
 
 import java.util.List;
+import java.util.StringTokenizer;
 
 import javax.inject.Inject;
 
@@ -52,7 +56,7 @@ import butterknife.OnClick;
 
 
 public class SavingsAccountTransactionFragment extends ProgressableFragment implements
-        MFDatePicker.OnDatePickListener, SavingsAccountTransactionMvpView {
+        MFDatePicker.OnDatePickListener, SavingsAccountTransactionMvpView {//} TextWatcher {
 
     public final String LOG_TAG = getClass().getSimpleName();
 
@@ -88,6 +92,10 @@ public class SavingsAccountTransactionFragment extends ProgressableFragment impl
     private int paymentTypeOptionId;
     private DialogFragment mfDatePicker;
 
+   /* public SavingsAccountTransactionFragment(EditText editText) {
+        this.et_transactionAmount = editText;
+    } */
+    public SavingsAccountTransactionFragment(){}
     /**
      * Use this factory method to create a new instance of
      * this fragment using the provided parameters.
@@ -368,4 +376,89 @@ public class SavingsAccountTransactionFragment extends ProgressableFragment impl
         super.onDestroyView();
         mSavingAccountTransactionPresenter.detachView();
     }
+
+
+  /*  @Override
+    public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+    }
+
+    @Override
+    public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+        et_transactionAmount.addTextChangedListener(new SavingsAccountTransactionFragment(et_transactionAmount));
+    }
+
+    @Override
+    public void afterTextChanged(Editable editable) {
+
+        try
+        {
+            et_transactionAmount.removeTextChangedListener(this);
+            String value = et_transactionAmount.getText().toString();
+
+
+            if (value != null && !value.equals(""))
+            {
+
+                if(value.startsWith(".")){
+                    et_transactionAmount.setText("0.");
+                }
+                if(value.startsWith("0") && !value.startsWith("0.")){
+                    et_transactionAmount.setText("");
+
+                }
+
+
+                String str = et_transactionAmount.getText().toString().replaceAll(",", "");
+                if (!value.equals(""))
+                    et_transactionAmount.setText(getDecimalFormattedString(str));
+                et_transactionAmount.setSelection(et_transactionAmount.getText().toString().length());
+            }
+            et_transactionAmount.addTextChangedListener(this);
+            return;
+        }
+        catch (Exception ex)
+        {
+            ex.printStackTrace();
+            et_transactionAmount.addTextChangedListener(this);
+        }
+
+    }
+
+    public static String getDecimalFormattedString(String value)
+    {
+        StringTokenizer lst = new StringTokenizer(value, ".");
+        String str1 = value;
+        String str2 = "";
+        if (lst.countTokens() > 1)
+        {
+            str1 = lst.nextToken();
+            str2 = lst.nextToken();
+        }
+        String str3 = "";
+        int i = 0;
+        int j = -1 + str1.length();
+        if (str1.charAt( -1 + str1.length()) == '.')
+        {
+            j--;
+            str3 = ".";
+        }
+        for (int k = j;; k--)
+        {
+            if (k < 0)
+            {
+                if (str2.length() > 0)
+                    str3 = str3 + "." + str2;
+                return str3;
+            }
+            if (i == 3)
+            {
+                str3 = "," + str3;
+                i = 0;
+            }
+            str3 = str1.charAt(k) + str3;
+            i++;
+        }
+
+    }*/
 }

@@ -207,12 +207,22 @@
                         android:text="@string/amount"
                         android:textAppearance="?android:attr/textAppearanceMedium" />
 
-                    <EditText
+                  <!--  <com.aldoapps.autoformatedittext.AutoFormatEditText
                         android:id="@+id/et_amount"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:ems="10"
+                        android:inputType="numberDecimal" /> -->
+
+                    <com.aldoapps.autoformatedittext.AutoFormatEditText
+                        android:id="@+id/et_amount"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
+                        android:layout_weight="0.4"
+                        android:digits="0123456789.,"
+                        android:gravity="left"
                         android:inputType="numberDecimal" />
                 </TableRow>
 
@@ -230,13 +240,24 @@
                         android:text="@string/additional_payment"
                         android:textAppearance="?android:attr/textAppearanceMedium" />
 
-                    <EditText
+                  <!--  <EditText
                         android:id="@+id/et_additional_payment"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:ems="10"
+                        android:inputType="numberDecimal" /> -->
+
+                    <com.aldoapps.autoformatedittext.AutoFormatEditText
+                        android:id="@+id/et_additional_payment"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
+                        android:layout_weight="0.4"
+                        android:digits="0123456789.,"
+                        android:gravity="left"
                         android:inputType="numberDecimal" />
+
                 </TableRow>
 
                 <TableRow
@@ -253,12 +274,22 @@
                         android:text="@string/loan_fees"
                         android:textAppearance="?android:attr/textAppearanceMedium" />
 
-                    <EditText
+                    <!-- <EditText
                         android:id="@+id/et_fees"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:ems="10"
+                        android:inputType="numberDecimal" /> -->
+
+                    <com.aldoapps.autoformatedittext.AutoFormatEditText
+                        android:id="@+id/et_fees"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical"
+                        android:layout_weight="0.4"
+                        android:digits="0123456789.,"
+                        android:gravity="left"
                         android:inputType="numberDecimal" />
 
                 </TableRow>

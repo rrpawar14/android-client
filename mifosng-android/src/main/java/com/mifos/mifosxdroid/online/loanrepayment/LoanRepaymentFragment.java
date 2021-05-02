@@ -39,7 +39,10 @@ import com.mifos.utils.Constants;
 import com.mifos.utils.FragmentConstants;
 import com.mifos.utils.Utils;
 
+import java.text.NumberFormat;
+import java.text.ParseException;
 import java.util.List;
+import java.util.Locale;
 
 import javax.inject.Inject;
 
@@ -199,7 +202,7 @@ public class LoanRepaymentFragment extends MifosBaseFragment
         tv_inArrears.setText(String.valueOf(amountInArrears));
 
         //Setup Form with Default Values
-        et_amount.setText("0.0");
+        et_amount.setText("0");
 
         et_amount.addTextChangedListener(new TextWatcher() {
             @Override
@@ -224,7 +227,7 @@ public class LoanRepaymentFragment extends MifosBaseFragment
             }
         });
 
-        et_additionalPayment.setText("0.0");
+        et_additionalPayment.setText("0");
 
         et_additionalPayment.addTextChangedListener(new TextWatcher() {
             @Override
@@ -249,7 +252,7 @@ public class LoanRepaymentFragment extends MifosBaseFragment
             }
         });
 
-        et_fees.setText("0.0");
+        et_fees.setText("0");
 
         et_fees.addTextChangedListener(new TextWatcher() {
             @Override
@@ -285,9 +288,39 @@ public class LoanRepaymentFragment extends MifosBaseFragment
      * @return Total of the Amount + Additional Payment + Fee Amount
      */
     public Double calculateTotal() {
-        return Double.parseDouble(et_amount.getText().toString())
+        NumberFormat format = NumberFormat.getInstance(Locale.FRANCE);
+        double Amount = 0;
+        double payment = 0;
+        double fees = 0;
+
+        try {
+            String amount_value= et_amount.getText().toString().replaceAll(","," ");
+            String payment_value= et_additionalPayment.getText().toString().replaceAll(","," ");
+            String fees_value= et_fees.getText().toString().replaceAll(","," ");
+
+
+            Number amountNumber = format.parse(amount_value);
+            Number paymentNumber = format.parse(payment_value);
+            Number feesNumber = format.parse(fees_value);
+
+            Amount = amountNumber.doubleValue();
+            payment = paymentNumber.doubleValue();
+            fees = feesNumber.doubleValue();
+
+
+
+
+
+
+
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+
+       /* return Double.parseDouble(et_amount.getText().toString())
                 + Double.parseDouble(et_additionalPayment.getText().toString())
-                + Double.parseDouble(et_fees.getText().toString());
+                + Double.parseDouble(et_fees.getText().toString());*/
+        return Amount + payment + fees;
     }
 
     /**
@@ -442,7 +475,7 @@ public class LoanRepaymentFragment extends MifosBaseFragment
             et_amount.setText(String.valueOf(loanRepaymentTemplate
                     .getPrincipalPortion()
                     + loanRepaymentTemplate.getInterestPortion()));
-            et_additionalPayment.setText("0.0");
+            et_additionalPayment.setText("0");
             et_fees.setText(String.valueOf(loanRepaymentTemplate
                     .getFeeChargesPortion()));
 
