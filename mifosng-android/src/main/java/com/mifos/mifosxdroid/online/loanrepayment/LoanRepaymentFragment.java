@@ -96,6 +96,9 @@ public class LoanRepaymentFragment extends MifosBaseFragment
     @BindView(R.id.bt_paynow)
     Button bt_paynow;
 
+    @BindView(R.id.tv_note)
+    EditText et_notes;
+
     @Inject
     LoanRepaymentPresenter mLoanRepaymentPresenter;
 
@@ -370,6 +373,7 @@ public class LoanRepaymentFragment extends MifosBaseFragment
                     {"Amount", et_amount.getText().toString()},
                     {"Addition Payment", et_additionalPayment.getText().toString()},
                     {"Fees", et_fees.getText().toString()},
+                    {"Note ", et_notes.getText().toString()},
                     {"Total", String.valueOf(calculateTotal())}
             };
             Log.d(LOG_TAG, FlipTable.of(headers, data));
@@ -435,6 +439,7 @@ public class LoanRepaymentFragment extends MifosBaseFragment
         request.setTransactionAmount(String.valueOf(calculateTotal()));
         request.setDateFormat("dd MM yyyy");
         request.setTransactionDate(dateString);
+        request.setNote(et_notes.getText().toString());
         String builtRequest = new Gson().toJson(request);
         Log.i("LOG_TAG", builtRequest);
 

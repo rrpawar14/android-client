@@ -317,6 +317,29 @@
 
                 </TableRow>
 
+                <TableRow
+                    android:id="@+id/tableRow7"
+                    android:layout_width="fill_parent"
+                    android:layout_height="fill_parent"
+                    android:padding="4dp">
+
+                <TextView
+                    android:id="@+id/textView7"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="@string/note"
+                    android:textAppearance="?android:attr/textAppearanceMedium" />
+
+                <EditText
+                    android:id="@+id/tv_note"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textAppearance="?android:attr/textAppearanceMedium"
+                    android:inputType= "text"/>
+                </TableRow>
+
             </TableLayout>
 
             <Button

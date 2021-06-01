@@ -78,6 +78,9 @@ public class SavingsAccountTransactionFragment extends ProgressableFragment impl
     @BindView(R.id.sp_payment_type)
     Spinner sp_paymentType;
 
+    @BindView(R.id.tv_savings_note)
+    EditText et_notes;
+
     @Inject
     SavingsAccountTransactionPresenter mSavingAccountTransactionPresenter;
 
@@ -236,11 +239,13 @@ public class SavingsAccountTransactionFragment extends ProgressableFragment impl
                 {getResources().getString(string.payment_type),
                         sp_paymentType.getSelectedItem().toString()},
                 {getResources().getString(string.amount),
-                        et_transactionAmount.getEditableText().toString()}
+                        et_transactionAmount.getEditableText().toString()},
+                {getResources().getString(string.note),
+                        et_notes.getEditableText().toString()},
         };
         Log.d(LOG_TAG, FlipTable.of(headers, data));
         StringBuilder formReviewStringBuilder = new StringBuilder();
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 2; j++) {
                 formReviewStringBuilder.append(data[i][j]);
                 if (j == 0) formReviewStringBuilder.append(" : ");
@@ -279,6 +284,7 @@ public class SavingsAccountTransactionFragment extends ProgressableFragment impl
         savingsAccountTransactionRequest.setTransactionAmount(et_transactionAmount
                 .getEditableText().toString());
         savingsAccountTransactionRequest.setPaymentTypeId(String.valueOf(paymentTypeOptionId));
+        savingsAccountTransactionRequest.setNote(et_notes.getText().toString());
 
         String builtTransactionRequestAsJson = new Gson().toJson(savingsAccountTransactionRequest);
         Log.i(getResources().getString(string.transaction_body), builtTransactionRequestAsJson);
