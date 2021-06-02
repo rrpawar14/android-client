@@ -97,7 +97,7 @@ public class App extends MultiDexApplication {
 
     @Override
     protected void attachBaseContext(Context base) {
-        super.attachBaseContext(LanguageHelper.onAttach(base, "en"));
+        super.attachBaseContext(LanguageHelper.onAttach(base));
     }
 
 }
