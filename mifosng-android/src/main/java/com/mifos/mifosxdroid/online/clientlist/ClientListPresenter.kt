@@ -5,40 +5,34 @@ import com.mifos.api.datamanager.DataManagerClient
 import com.mifos.api.datamanager.DataManagerOffices
 import com.mifos.mifosxdroid.R
 import com.mifos.mifosxdroid.base.BasePresenter
+import com.mifos.mifosxdroid.injection.ActivityContext
 import com.mifos.objects.client.Client
 import com.mifos.objects.client.Page
 import com.mifos.objects.templates.clients.OfficeOptions
 import com.mifos.utils.EspressoIdlingResource
+import rx.Observable
 import rx.Subscriber
 import rx.android.schedulers.AndroidSchedulers
-import rx.functions.Action1
-import rx.Observable
-
 import rx.schedulers.Schedulers
 import rx.subscriptions.CompositeSubscription
 import java.util.*
 import javax.inject.Inject
-
 
 /**
  * Created by Rajan Maurya on 6/6/16.
  * This Presenter Holds the All Logic to request to DataManagerClient and DataManagerClient, Take
  * care of that From Where Data will come Database or REST API.
  */
-class ClientListPresenter @Inject constructor(private val mDataManagerClient: DataManagerClient,
-                                              private val mDataManagerOffices: DataManagerOffices)
-    : BasePresenter<ClientListMvpView?>() {
+class ClientListPresenter @Inject constructor(private val mDataManagerClient: DataManagerClient, private val mDataManagerOffices: DataManagerOffices, @param:ActivityContext private val c: Context) : BasePresenter<ClientListMvpView?>() {
     private var mSubscriptions: CompositeSubscription? = null
-    private val c: Context? = null
     private var mDbClientList: List<Client>
-    private var mSyncClientList: List<Client>?
-    private lateinit var mNewOfficeClientList: List<Client>
+    private var mSyncClientList: List<Client>
+    private var mNewOfficeClientList: List<Client>
     private var officeId = 1
     private var loadmore = false
     private var mRestApiClientSyncStatus = false
     private var mDatabaseClientSyncStatus = false
     private var filterSearch = false
-
     override fun attachView(mvpView: ClientListMvpView?) {
         super.attachView(mvpView)
         mSubscriptions = CompositeSubscription()
@@ -57,11 +51,10 @@ class ClientListPresenter @Inject constructor(private val mDataManagerClient: Da
      */
     fun loadClients(loadmore: Boolean, offset: Int) {
         this.loadmore = loadmore
-        if (!filterSearch){
-            loadClients(false, offset, officeId);
-        }
-        else{
-            loadClientsByOfficeId(false, offset, officeId);
+        if (!filterSearch) {
+            loadClients(false, offset, officeId)
+        } else {
+            loadClientsByOfficeId(false, offset, officeId)
         }
     }
 
@@ -84,9 +77,9 @@ class ClientListPresenter @Inject constructor(private val mDataManagerClient: Da
      *
      * @param clients List<Client></Client>>
      */
-    fun showParentClients(clients: List<Client>?) {
+    fun showParentClients(clients: List<Client>) {
         mvpView!!.unregisterSwipeAndScrollListener()
-        if (clients!!.size == 0) {
+        if (clients.size == 0) {
             mvpView!!.showEmptyClientList(R.string.client)
         } else {
             mRestApiClientSyncStatus = true
@@ -135,17 +128,19 @@ class ClientListPresenter @Inject constructor(private val mDataManagerClient: Da
                     }
 
                     override fun onNext(clientPage: Page<Client?>?) {
-                        mSyncClientList = clientPage!!.pageItems as List<Client>?
-                        /*if ((mSyncClientList as MutableList<Client>?)!!.size == 0 && !loadmore) {
-                            mvpView!!.showEmptyClientList(R.string.client)
-                            mvpView!!.unregisterSwipeAndScrollListener()
-                        } else if ((mSyncClientList as MutableList<Client>?)!!.size == 0 && loadmore) {
-                            mvpView!!.showMessage(R.string.no_more_clients_available)
+                        mSyncClientList = clientPage?.pageItems as List<Client>
+
+
+                        /*  if (mSyncClientList.size() == 0 && !loadmore) {
+                            getMvpView().showEmptyClientList(R.string.client);
+                            getMvpView().unregisterSwipeAndScrollListener();
+                        } else if (mSyncClientList.size() == 0 && loadmore) {
+                            getMvpView().showMessage(R.string.no_more_clients_available);
                         } else {
-                            mRestApiClientSyncStatus = true
-                            setAlreadyClientSyncStatus()
-                        }*/
-                        mRestApiClientSyncStatus = true
+                            mRestApiClientSyncStatus = true;
+                            setAlreadyClientSyncStatus();
+                        }*/mRestApiClientSyncStatus = true
+                        // setAlreadyClientSyncStatus();
                         mvpView!!.showClientList(mSyncClientList)
                         mvpView!!.showProgressbar(false)
                         EspressoIdlingResource.decrement() // App is idle.
@@ -161,11 +156,10 @@ class ClientListPresenter @Inject constructor(private val mDataManagerClient: Da
         EspressoIdlingResource.increment() // App is busy until further notice.
         checkViewAttached()
         mvpView!!.showProgressbar(true)
-        mSubscriptions!!.add(officeId?.let {
-            mDataManagerClient.getAllClientsByOfficeId(paged, offset, it)
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribeOn(Schedulers.io())
-                    .subscribe(object : Subscriber<Page<Client?>?>() {
+        mSubscriptions!!.add(mDataManagerClient.getAllClientsByOfficeId(paged, offset, officeId!!)
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribeOn(Schedulers.io())
+                .subscribe(object : Subscriber<Page<Client?>?>() {
                     override fun onCompleted() {}
                     override fun onError(e: Throwable) {
                         mvpView!!.showProgressbar(false)
@@ -180,17 +174,17 @@ class ClientListPresenter @Inject constructor(private val mDataManagerClient: Da
                     override fun onNext(clientPage: Page<Client?>?) {
                         if (offset < 8) {
                             println("offsetlessthan$offset")
-                            mNewOfficeClientList = clientPage?.getPageItems() as List<Client>
+                            mNewOfficeClientList = clientPage?.pageItems as List<Client>
                             mvpView!!.showClientList(mNewOfficeClientList)
                             mvpView!!.showProgressbar(false)
                             EspressoIdlingResource.decrement() // App is idle.
                         } else {
                             println("offsetgreaterthan$offset")
-                            mSyncClientList = clientPage?.getPageItems() as List<Client>
-                            if (mSyncClientList!!.size == 0 && !loadmore) {
+                            mSyncClientList = clientPage?.pageItems as List<Client>
+                            if (mSyncClientList.size == 0 && !loadmore) {
                                 mvpView!!.showEmptyClientList(R.string.client)
                                 mvpView!!.unregisterSwipeAndScrollListener()
-                            } else if (mSyncClientList!!.size == 0 && loadmore) {
+                            } else if (mSyncClientList.size == 0 && loadmore) {
                                 mvpView!!.showMessage(R.string.no_more_clients_available)
                             } else {
                                 mRestApiClientSyncStatus = true
@@ -202,10 +196,8 @@ class ClientListPresenter @Inject constructor(private val mDataManagerClient: Da
                             }
                         }
                     }
-                })
-        })
+                }))
     }
-
 
     fun loadOffices() {
         checkViewAttached()
@@ -224,20 +216,19 @@ class ClientListPresenter @Inject constructor(private val mDataManagerClient: Da
                 }))
     }
 
-    fun createOfficeNameIdMap(offices: List<OfficeOptions>,
-                              officeNames: MutableList<String?>): HashMap<String, Int>? {
-        val officeMap: HashMap<String, Int> = HashMap()
-        officeMap[c!!.resources.getString(R.string.spinner_office)] = -1
+    fun createOfficeNameIdMap(offices: List<OfficeOptions>?,
+                              officeNames: MutableList<String?>): HashMap<String, Int> {
+        val officeMap = HashMap<String, Int>()
+        officeMap[c.resources.getString(R.string.spinner_office)] = -1
         officeNames.clear()
         officeNames.add(c.resources.getString(R.string.spinner_office))
         Observable.from(offices)
-                .subscribe(Action1<OfficeOptions> { office ->
+                .subscribe { office ->
                     officeMap[office.name] = office.id
                     officeNames.add(office.name)
-                })
+                }
         return officeMap
     }
-
 
     /**
      * This Method Loading the Client From Database. It request Observable to DataManagerClient
@@ -258,7 +249,7 @@ class ClientListPresenter @Inject constructor(private val mDataManagerClient: Da
 
                     override fun onNext(clientPage: Page<Client?>?) {
                         mDatabaseClientSyncStatus = true
-                        mDbClientList = clientPage!!.pageItems as List<Client>
+                        mDbClientList = clientPage?.pageItems as List<Client>
                         setAlreadyClientSyncStatus()
                     }
                 })
@@ -272,10 +263,10 @@ class ClientListPresenter @Inject constructor(private val mDataManagerClient: Da
      * @param
      * @return Page<Client>
     </Client> */
-    fun checkClientAlreadySyncedOrNot(clients: List<Client>?): List<Client>? {
+    fun checkClientAlreadySyncedOrNot(clients: List<Client>): List<Client> {
         if (mDbClientList.size != 0) {
             for (dbClient in mDbClientList) {
-                for (syncClient in clients!!) {
+                for (syncClient in clients) {
                     if (dbClient.id == syncClient.id) {
                         syncClient.isSync = true
                         break
@@ -293,5 +284,6 @@ class ClientListPresenter @Inject constructor(private val mDataManagerClient: Da
     init {
         mDbClientList = ArrayList()
         mSyncClientList = ArrayList()
+        mNewOfficeClientList = ArrayList()
     }
 }

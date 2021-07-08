@@ -844,13 +844,6 @@
         <item>System Default</item>
     </string-array>
 
-    <string-array name="dark_mode_values"  translatable="false">
-        <item>light</item>
-        <item>dark</item>
-        <item>default</item>
-    </string-array>
-
-
     <!-- About App -->
     <string name="about_app">Field Officer Application is an application
         developed for the Bank staff field officer to keep track of Clients,

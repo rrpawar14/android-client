@@ -9,7 +9,9 @@ import android.os.Bundle
 import android.os.Parcelable
 import android.view.*
 import android.widget.*
+import android.widget.AdapterView.OnItemSelectedListener
 import androidx.appcompat.view.ActionMode
+import androidx.appcompat.widget.SearchView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -33,9 +35,9 @@ import com.mifos.objects.client.Client
 import com.mifos.objects.templates.clients.OfficeOptions
 import com.mifos.utils.Constants
 import com.mifos.utils.FragmentConstants
+import com.mifos.utils.PrefManager.getBoolean
 import java.util.*
 import javax.inject.Inject
-
 
 /**
  * Created by ishankhanna on 09/02/14.
@@ -61,23 +63,24 @@ import javax.inject.Inject
  * boolean isParentFragment) {...}
  * and unregister the ScrollListener and SwipeLayout.
 </Client> */
-class ClientListFragment : MifosBaseFragment(), RecyclerItemClickListener.OnItemClickListener, ClientListMvpView, OnRefreshListener, Filterable, AdapterView.OnItemSelectedListener {
-    @JvmField
+class ClientListFragment : MifosBaseFragment(), RecyclerItemClickListener.OnItemClickListener, ClientListMvpView, OnItemSelectedListener, OnRefreshListener, Filterable {
+    @kotlin.jvm.JvmField
     @BindView(R.id.rv_clients)
     var rv_clients: RecyclerView? = null
 
-    @JvmField
+    @kotlin.jvm.JvmField
     @BindView(R.id.swipe_container)
     var swipeRefreshLayout: SwipeRefreshLayout? = null
 
-    @JvmField
+    @kotlin.jvm.JvmField
     @BindView(R.id.layout_error)
     var errorView: View? = null
 
-    @JvmField
+    @kotlin.jvm.JvmField
     @BindView(R.id.pb_client)
     var pb_client: ProgressBar? = null
 
+    @kotlin.jvm.JvmField
     @BindView(R.id.sp_search)
     var sp_search: Spinner? = null
 
@@ -92,10 +95,8 @@ class ClientListFragment : MifosBaseFragment(), RecyclerItemClickListener.OnItem
     @JvmField
     @Inject
     var createNewClientPresenter: CreateNewClientPresenter? = null
-
-    private lateinit var rootView: View
+    private var rootView: View? = null
     private var clientList: MutableList<Client>? = null
-    private var officeList: ArrayList<String>? = null
     private var selectedClients: MutableList<Client>? = null
     private var actionModeCallback: ActionModeCallback? = null
     private var actionMode: ActionMode? = null
@@ -105,6 +106,7 @@ class ClientListFragment : MifosBaseFragment(), RecyclerItemClickListener.OnItem
     private var sweetUIErrorHandler: SweetUIErrorHandler? = null
     private var clientsListFilter: List<Client>? = null
     private var clientsFullList: List<Client>? = null
+    private var officeList: MutableList<String>? = null
     private var isSearchFilter = false
     override fun onItemClick(childView: View, position: Int) {
         if (actionMode != null) {
@@ -124,19 +126,12 @@ class ClientListFragment : MifosBaseFragment(), RecyclerItemClickListener.OnItem
         toggleSelection(position)
     }
 
-    override fun onOptionsItemSelected(item: MenuItem?): Boolean {
-        val id = item!!.itemId
-        return if (id == R.id.mItem_search) {
-            true
-        } else super.onOptionsItemSelected(item)
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         clientList = ArrayList()
         officeList = ArrayList()
-        this.selectedClients = ArrayList()
-        this.clientsListFilter = ArrayList()
+        selectedClients = ArrayList()
+        clientsListFilter = ArrayList()
         actionModeCallback = ActionModeCallback()
         if (arguments != null) {
             clientList = arguments!!.getParcelableArrayList(Constants.CLIENTS)
@@ -146,11 +141,18 @@ class ClientListFragment : MifosBaseFragment(), RecyclerItemClickListener.OnItem
         setHasOptionsMenu(true)
     }
 
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        val id = item.itemId
+        return if (id == R.id.mItem_search) {
+            true
+        } else super.onOptionsItemSelected(item)
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View? {
         rootView = inflater.inflate(R.layout.fragment_client, container, false)
         (activity as MifosBaseActivity?)!!.activityComponent.inject(this)
         setToolbarTitle(resources.getString(R.string.clients))
-        ButterKnife.bind(this, rootView)
+        ButterKnife.bind(this, rootView!!)
         mClientListPresenter!!.attachView(this)
 
         //setting all the UI content to the view
@@ -173,7 +175,7 @@ class ClientListFragment : MifosBaseFragment(), RecyclerItemClickListener.OnItem
          * Client Lis to show. and Presenter make transaction to Database to load saved clients.
          */
         if (isParentFragment) {
-            mClientListPresenter!!.showParentClients(clientList)
+            mClientListPresenter!!.showParentClients(clientList!!)
         } else {
             mClientListPresenter!!.loadClients(false, 0)
         }
@@ -207,7 +209,7 @@ class ClientListFragment : MifosBaseFragment(), RecyclerItemClickListener.OnItem
         rv_clients!!.setHasFixedSize(true)
         rv_clients!!.adapter = mClientNameListAdapter
         swipeRefreshLayout!!.setColorSchemeColors(*activity
-                ?.getResources()!!.getIntArray(R.array.swipeRefreshColors))
+                !!.resources.getIntArray(R.array.swipeRefreshColors))
         swipeRefreshLayout!!.setOnRefreshListener(this)
         sweetUIErrorHandler = SweetUIErrorHandler(activity, rootView)
     }
@@ -275,42 +277,54 @@ class ClientListFragment : MifosBaseFragment(), RecyclerItemClickListener.OnItem
         }
     }
 
-    /**
-     * Updating Adapter Attached ClientList
-     *
-     * @param clients List<Client></Client>>
-     */
-    override fun showLoadMoreClients(clients: List<Client>?) {
-        if (clients != null) {
-            clientList?.addAll(clients)
-        }
-        mClientNameListAdapter!!.notifyDataSetChanged()
-        // mClientNameListAdapter.notifyDataSetChanged();
-    }
-
-    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater?) {
-        val Item = menu.findItem(R.id.mItem_menu_search)
-        Item.isVisible = true
-        val searchView = Item.actionView as SearchView
-        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
-            override fun onQueryTextSubmit(query: String?): Boolean {
-                return false
-            }
-
-            override fun onQueryTextChange(newText: String?): Boolean {
-                filter?.filter(newText)
-                return false
-            }
-        })
-        super.onCreateOptionsMenu(menu, inflater)
-    }
-
     override fun showClientListLoadMore(clients: List<Client>?) {
         clientList = clients as MutableList<Client>?
         mClientNameListAdapter!!.setClients(clients)
         clientsFullList = ArrayList(clients)
         mClientNameListAdapter!!.notifyDataSetChanged()
     }
+
+    /**
+     * Updating Adapter Attached ClientList
+     *
+     * @param clients List<Client></Client>>
+     */
+    override fun showLoadMoreClients(clients: List<Client>?) {
+        clients?.let { clientList!!.addAll(it) }
+        // mClientNameListAdapter.notifyDataSetChanged();
+    }
+
+    /**
+     * Initialize the contents of the Fragment host's standard options menu.  You
+     * should place your menu items in to <var>menu</var>.  For this method
+     * to be called, you must have first called [.setHasOptionsMenu].  See
+     * for more information.
+     *
+     * @param menu     The options menu in which you place your items.
+     * @param inflater
+     * @see .setHasOptionsMenu
+     *
+     * @see .onPrepareOptionsMenu
+     *
+     * @see .onOptionsItemSelected
+     */
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        val Item = menu.findItem(R.id.mItem_menu_search)
+        Item.isVisible = true
+        val searchView = Item.actionView as SearchView
+        searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
+            override fun onQueryTextSubmit(query: String): Boolean {
+                return false
+            }
+
+            override fun onQueryTextChange(newText: String): Boolean {
+                getFilter().filter(newText)
+                return false
+            }
+        })
+        super.onCreateOptionsMenu(menu, inflater)
+    }
+
     /**
      * Showing Fetched ClientList size is 0 and show there is no client to show.
      *
@@ -330,27 +344,27 @@ class ClientListFragment : MifosBaseFragment(), RecyclerItemClickListener.OnItem
         sweetUIErrorHandler!!.showSweetErrorUI(errorMessage, R.drawable.ic_error_black_24dp,
                 rv_clients, errorView)
     }
-    private var officeNameIdHashMap: HashMap<String, Int>? = HashMap()
-    private val officeNames: MutableList<String?> = ArrayList()
+
+    private var officeNameIdHashMap = HashMap<String, Int>()
+    private val officeNames: List<String?> = ArrayList()
 
     override fun showOffices(offices: List<OfficeOptions>) {
-        officeList?.clear()
-        officeNameIdHashMap = mClientListPresenter!!.createOfficeNameIdMap(offices, officeNames)
-        setSpinner(sp_search!!, officeNames)
+        officeList!!.clear()
+        officeNameIdHashMap = mClientListPresenter!!.createOfficeNameIdMap(offices, officeNames as MutableList<String?>)
+        setSpinner(sp_search, officeNames)
         sp_search!!.onItemSelectedListener = this
     }
 
-    private fun setSpinner(spinner: Spinner, values: List<String?>) {
+    private fun setSpinner(spinner: Spinner?, values: List<String?>) {
         val adapter = ArrayAdapter(activity,
                 android.R.layout.simple_spinner_item, values)
         adapter.notifyDataSetChanged()
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
-        spinner.adapter = adapter
+        spinner!!.adapter = adapter
     }
 
-
-    override fun onItemSelected(adapterView: AdapterView<*>?, view: View?, i: Int, l: Long) {
-        val officeId: Int? = officeNameIdHashMap!![officeNames[i]]
+    override fun onItemSelected(adapterView: AdapterView<*>?, view: View, i: Int, l: Long) {
+        val officeId: Int? = officeNameIdHashMap.get(officeNames[i])
         if (officeId != -1) {
             mClientListPresenter!!.loadClientsByOfficeId(false, 0, officeId)
             //  mClientNameListAdapter.notifyDataSetChanged();
@@ -360,7 +374,6 @@ class ClientListFragment : MifosBaseFragment(), RecyclerItemClickListener.OnItem
     }
 
     override fun onNothingSelected(adapterView: AdapterView<*>?) {}
-
     fun getSelectedOffice(v: View?) {
         val officeOptions = sp_search!!.selectedItem as OfficeOptions
         fetchOfficeData(officeOptions)
@@ -368,39 +381,6 @@ class ClientListFragment : MifosBaseFragment(), RecyclerItemClickListener.OnItem
 
     private fun fetchOfficeData(officeOptions: OfficeOptions): Int {
         return officeOptions.id
-    }
-
-    override fun getFilter(): Filter {
-        return filter
-    }
-
-    private val filter: Filter = object : Filter() {
-        override fun performFiltering(charSequence: CharSequence): FilterResults? {
-            val filteredList: MutableList<Client> = ArrayList()
-            if (charSequence.toString().isEmpty()) {
-                filteredList.addAll(clientsFullList!!)
-            } else {
-                val filterPattern = charSequence.toString().toLowerCase(Locale.getDefault()).trim { it <= ' ' }
-                for (client in clientsFullList!!) {
-                    if (client.displayName.toLowerCase(Locale.getDefault()).contains(filterPattern)) {
-                        filteredList.add(client)
-                    }
-                    if (client.accountNo.contains(filterPattern)) {
-                        filteredList.add(client)
-                    }
-                }
-            }
-            val filterResults = FilterResults()
-            filterResults.values = filteredList
-            return filterResults
-        }
-
-        override fun publishResults(charSequence: CharSequence?, filterResults: FilterResults) {
-            isSearchFilter = true
-            clientList!!.clear()
-            clientList!!.addAll(filterResults.values as Collection<Client>)
-            mClientNameListAdapter!!.notifyDataSetChanged()
-        }
     }
 
     /**
@@ -445,6 +425,39 @@ class ClientListFragment : MifosBaseFragment(), RecyclerItemClickListener.OnItem
         }
     }
 
+    override fun getFilter(): Filter {
+        return filter
+    }
+
+    private val filter: Filter = object : Filter() {
+        override fun performFiltering(charSequence: CharSequence): FilterResults {
+            val filteredList: MutableList<Client> = ArrayList()
+            if (charSequence.toString().isEmpty()) {
+                filteredList.addAll(clientsFullList!!)
+            } else {
+                val filterPattern = charSequence.toString().toLowerCase().trim { it <= ' ' }
+                for (client in clientsFullList!!) {
+                    if (client.displayName.toLowerCase().contains(filterPattern)) {
+                        filteredList.add(client)
+                    }
+                    if (client.accountNo.contains(filterPattern)) {
+                        filteredList.add(client)
+                    }
+                }
+            }
+            val filterResults = FilterResults()
+            filterResults.values = filteredList
+            return filterResults
+        }
+
+        override fun publishResults(charSequence: CharSequence, filterResults: FilterResults) {
+            isSearchFilter = true
+            clientList!!.clear()
+            clientList!!.addAll(filterResults.values as List<Client>)
+            mClientNameListAdapter!!.notifyDataSetChanged()
+        }
+    }
+
     /**
      * This ActionModeCallBack Class handling the User Event after the Selection of Clients. Like
      * Click of Menu Sync Button and finish the ActionMode
@@ -469,11 +482,13 @@ class ClientListFragment : MifosBaseFragment(), RecyclerItemClickListener.OnItem
                     }
                     val syncClientsDialogFragment = SyncClientsDialogFragment.newInstance(selectedClients)
                     val fragmentTransaction = activity
-                            ?.getSupportFragmentManager()!!.beginTransaction()
-                    fragmentTransaction.addToBackStack(FragmentConstants.FRAG_CLIENT_SYNC)
+                            ?.supportFragmentManager?.beginTransaction()
+                    fragmentTransaction?.addToBackStack(FragmentConstants.FRAG_CLIENT_SYNC)
                     syncClientsDialogFragment.isCancelable = false
-                    syncClientsDialogFragment.show(fragmentTransaction,
-                            resources.getString(R.string.sync_clients))
+                    fragmentTransaction?.let {
+                        syncClientsDialogFragment.show(it,
+                                resources.getString(R.string.sync_clients))
+                    }
                     mode.finish()
                     true
                 }
@@ -489,22 +504,6 @@ class ClientListFragment : MifosBaseFragment(), RecyclerItemClickListener.OnItem
 
     companion object {
         val LOG_TAG = ClientListFragment::class.java.simpleName
-
-        /**
-         * This method will be called, whenever ClientListFragment will not have Parent Fragment.
-         * So, Presenter make the call to Rest API and fetch the Client List and show in UI
-         *
-         * @return ClientListFragment
-         */
-
-        @JvmStatic
-        fun newInstance(): ClientListFragment {
-            val arguments = Bundle()
-            val clientListFragment = ClientListFragment()
-            clientListFragment.arguments = arguments
-            return clientListFragment
-        }
-
         /**
          * This Method will be called, whenever Parent (Fragment or Activity) will be true and Presenter
          * do not need to make Rest API call to server. Parent (Fragment or Activity) already fetched
@@ -528,6 +527,20 @@ class ClientListFragment : MifosBaseFragment(), RecyclerItemClickListener.OnItem
                 args.putBoolean(Constants.IS_A_PARENT_FRAGMENT, true)
                 clientListFragment.arguments = args
             }
+            return clientListFragment
+        }
+
+        /**
+         * This method will be called, whenever ClientListFragment will not have Parent Fragment.
+         * So, Presenter make the call to Rest API and fetch the Client List and show in UI
+         *
+         * @return ClientListFragment
+         */
+        @JvmStatic
+        fun newInstance(): ClientListFragment {
+            val arguments = Bundle()
+            val clientListFragment = ClientListFragment()
+            clientListFragment.arguments = arguments
             return clientListFragment
         }
 

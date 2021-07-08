@@ -19,7 +19,7 @@ class GroupsListPresenter @Inject constructor(private val mDataManagerGroups: Da
     private val mSubscriptions: CompositeSubscription = CompositeSubscription()
     private var mDbGroupList: List<Group>
     private var mSyncGroupList: List<Group?>
-    private var limit: Int? = null
+    private var limit: Int = Int.MAX_VALUE
     private var loadmore = false
     private var mRestApiGroupSyncStatus = false
     private var mDatabaseGroupSyncStatus = false

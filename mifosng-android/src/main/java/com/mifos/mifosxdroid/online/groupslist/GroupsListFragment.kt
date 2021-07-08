@@ -63,19 +63,19 @@ import javax.inject.Inject
  * and unregister the ScrollListener and SwipeLayout.
 </Group> */
 class GroupsListFragment : MifosBaseFragment(), GroupsListMvpView, RecyclerItemClickListener.OnItemClickListener, OnRefreshListener, Filterable {
-    @JvmField
+    @kotlin.jvm.JvmField
     @BindView(R.id.rv_groups)
     var rv_groups: RecyclerView? = null
 
-    @JvmField
+    @kotlin.jvm.JvmField
     @BindView(R.id.progressbar_group)
     var pb_groups: ProgressBar? = null
 
-    @JvmField
+    @kotlin.jvm.JvmField
     @BindView(R.id.swipe_container)
     var swipeRefreshLayout: SwipeRefreshLayout? = null
 
-    @JvmField
+    @kotlin.jvm.JvmField
     @BindView(R.id.layout_error)
     var errorView: View? = null
 
@@ -112,8 +112,8 @@ class GroupsListFragment : MifosBaseFragment(), GroupsListMvpView, RecyclerItemC
         toggleSelection(position)
     }
 
-    override fun onCreateOptionsMenu(menu: Menu?, inflater: MenuInflater?) {
-        val item = menu!!.findItem(R.id.mItem_menu_search)
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        val item = menu.findItem(R.id.mItem_menu_search)
         item.isVisible = true
         val searchView: SearchView = item.actionView as SearchView
 
